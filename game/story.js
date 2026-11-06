@@ -292,12 +292,12 @@ export function onDawn() {
 }
 
 const BOUNTY_TEMPLATES = [
-  (l) => ({ type: 'kill', enemy: 'wisp', count: randInt(5, 9), text: 'Disperse wisps' }),
-  (l) => ({ type: 'kill', enemy: 'husk', count: randInt(3, 6), text: 'Break husks' }),
-  (l) => ({ type: 'kill', enemy: 'eater', count: randInt(3, 5), text: 'Silence lantern-eaters' }),
-  (l) => ({ type: 'kill', enemy: 'any', zone: 'pines', count: randInt(6, 10), text: 'Clear the Whispering Pines' }),
-  (l) => ({ type: 'kill', enemy: 'any', zone: 'fields', count: randInt(5, 8), text: 'Patrol the Southern Fields' }),
-  (l) => ({ type: 'kill', enemy: 'any', zone: 'north', count: randInt(5, 8), text: 'Sweep the North Meadow' }),
+  (l) => ({ type: 'kill', enemy: 'wisp', count: randInt(3, 6), text: 'Disperse wisps' }),
+  (l) => ({ type: 'kill', enemy: 'husk', count: randInt(2, 4), text: 'Break husks' }),
+  (l) => ({ type: 'kill', enemy: 'eater', count: randInt(2, 4), text: 'Silence lantern-eaters' }),
+  (l) => ({ type: 'kill', enemy: 'any', zone: 'pines', count: randInt(4, 6), text: 'Clear the Whispering Pines' }),
+  (l) => ({ type: 'kill', enemy: 'any', zone: 'fields', count: randInt(3, 5), text: 'Patrol the Southern Fields' }),
+  (l) => ({ type: 'kill', enemy: 'any', zone: 'north', count: randInt(3, 5), text: 'Sweep the North Meadow' }),
   (l) => ({ type: 'kill', enemy: 'brute', count: randInt(1, 3), text: 'Topple marsh brutes', minLevel: 8 }),
 ];
 export function makeBounties() {

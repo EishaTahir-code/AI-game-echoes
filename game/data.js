@@ -1,6 +1,6 @@
 // Story content: townsfolk, dialogue with memory, quests, fox memories and deeds.
 import { S } from './story.js';
-import { PLACES } from './world.js';
+import { PLACES, SHRINES } from './world.js';
 
 const fox = () => S.foxName();
 
@@ -266,7 +266,7 @@ export const NPCS = {
         effect: () => { S.setFlag('ruel', 'helped', true); S.gossip('helpedRuel'); S.complete('m4'); }, next: 'm4turn2',
       },
       m4turn2: { text: 'Sora has been asking about the old shrines. Something about a song her grandmother taught her. Go and hear her out.', next: null },
-      s4turn: { text: 'Ten hollows in the dark. You fight like you\'ve done it all your life. The watch could use you. Take this, it\'s better than what my men wear.', effect: () => S.complete('s4'), next: null },
+      s4turn: { text: 'Six hollows in the dark. You fight like you\'ve done it all your life. The watch could use you. Take this, it\'s better than what my men wear.', effect: () => S.complete('s4'), next: null },
       hub: {
         text: () => S.pickLine([
           [S.flag('ruel', 'needled') && S.aff('ruel') < 40, 'You again.', 'Remembers you questioned his courage'],
@@ -283,7 +283,7 @@ export const NPCS = {
           { text: 'Goodbye.', next: null },
         ],
       },
-      patrol: { text: 'Night patrol. Put down ten hollows after dark. The roads, the fields, wherever you find them.', next: null },
+      patrol: { text: 'Night patrol. Put down six hollows after dark. The roads, the fields, wherever you find them.', next: null },
       alibi: { text: 'At this gate. Alone. Which means nobody can say I wasn\'t. I know how that sounds.', effect: () => S.setFlag('ruel', 'alibi'), next: null },
     },
     milestone: { aff: 60, text: 'I don\'t do this. Take my old blade. It\'s served me well, and it should serve someone who\'ll use it.', reward: () => S.giveUnique('ruelBlade') },
@@ -350,7 +350,7 @@ export const NPCS = {
     look: { skin: 0xc89070, hair: 0xc8642a, hairStyle: 'spiky', coat: 0x5a4a3a, coat2: 0x3a2a1c, apron: 0x3a2a1c, weapon: 'hammer', scale: 1.05 },
     startAff: 30, likes: ['dust'], dislikes: ['moonpetal'], portraitBg: '#5a4a3a',
     root() {
-      if (S.qStep('s6') === 1 && S.has('dust', 10)) return 's6turn';
+      if (S.qStep('s6') === 1 && S.has('dust', 6)) return 's6turn';
       return 'hub';
     },
     nodes: {
@@ -370,8 +370,8 @@ export const NPCS = {
           { text: 'Goodbye.', next: null },
         ],
       },
-      commission: { text: 'Echo dust. The stuff hollows leave behind. Bring me ten and I\'ll make you something worth swinging.', next: null },
-      s6turn: { text: 'Ten! Good. Give me a moment... there. Balanced, sharp and a little bit haunted. My best yet.', effect: () => { S.take('dust', 10); S.complete('s6'); }, next: null },
+      commission: { text: 'Echo dust. The stuff hollows leave behind. Bring me six and I\'ll make you something worth swinging.', next: null },
+      s6turn: { text: 'Six! Good. Give me a moment... there. Balanced, sharp and a little bit haunted. My best yet.', effect: () => { S.take('dust', 6); S.complete('s6'); }, next: null },
     },
     milestone: { aff: 60, text: 'I made this on my own time. Don\'t thank me. Just don\'t die.', reward: () => S.giveGear('weapon', 3) },
   },
@@ -423,7 +423,7 @@ export const QUESTS = {
     steps: [
       { text: 'Talk to Captain Ruel at the north gate', type: 'talk', npc: 'ruel' },
       { text: 'Light the Watchtower Shrine', type: 'interact', id: 'shrine:tower', x: -84, z: 88 },
-      { text: 'Hold the hill: defeat 8 hollows', type: 'kill', enemy: 'any', count: 8, zone: 'tower', spawn: { type: 'mix', n: 5, x: -90, z: 84, lvl: 7, tag: 'm4', waves: 2 } },
+      { text: 'Hold the hill: defeat 8 hollows', type: 'kill', enemy: 'any', count: 8, zone: 'tower', spawn: { type: 'mix', n: 4, x: -90, z: 84, lvl: 7, tag: 'm4', waves: 2 } },
       { text: 'Report to Captain Ruel', type: 'talk', npc: 'ruel' },
     ],
     rewards: { xp: 900, gold: 180, gear: 3 }, unlocks: ['m5'],
@@ -473,7 +473,7 @@ export const QUESTS = {
   s4: {
     title: 'Night Patrol', giver: 'ruel', type: 'side',
     steps: [
-      { text: 'Defeat 10 hollows after dark', type: 'kill', enemy: 'any', count: 10, night: true },
+      { text: 'Defeat 6 hollows after dark', type: 'kill', enemy: 'any', count: 6, night: true },
       { text: 'Report to Captain Ruel', type: 'talk', npc: 'ruel' },
     ],
     rewards: { xp: 700, gold: 160, gearSlot: ['armor', 3] },
@@ -489,7 +489,7 @@ export const QUESTS = {
   s6: {
     title: 'Hild\'s Commission', giver: 'hild', type: 'side',
     steps: [
-      { text: 'Collect 10 echo dust from hollows', type: 'collect', item: 'dust', count: 10 },
+      { text: 'Collect 6 echo dust from hollows', type: 'collect', item: 'dust', count: 6 },
       { text: 'Bring the dust to Hild', type: 'talk', npc: 'hild' },
     ],
     rewards: { xp: 260, gold: 40, gearSlot: ['weapon', 2], aff: ['hild', 12] },
@@ -500,14 +500,14 @@ export const QUESTS = {
 export const SHARDS = [
   { x: -30, z: -62, text: 'A warm hand lifts a paper lantern. A man\'s voice: "There. Now you\'ll never be lost."' },
   { x: -125, z: -25, text: 'Lord Aurel, younger, laughing on the pier. You are curled inside the lantern at his feet.' },
-  { x: -128, z: -122, text: 'Festival drums. Hundreds of lanterns on the water. He lets you choose which one to light first.' },
-  { x: -55, z: 112, text: 'Two voices arguing behind the manor. One of them is his sister\'s.' },
-  { x: -122, z: 100, text: 'Rain on the lake. Aurel writing late: "The lake gives back what it takes. I must be careful."' },
-  { x: 20, z: -98, text: 'A boat with no lamp, gliding toward the middle of the lake at an hour when no boat should be out.' },
+  { x: 232, z: 32, text: 'Festival drums. Hundreds of lanterns on the water. He lets you choose which one to light first.' },
+  { x: -24, z: 224, text: 'Two voices arguing behind the manor. One of them is his sister\'s.' },
+  { x: -232, z: 28, text: 'Rain on the lake. Aurel writing late: "The lake gives back what it takes. I must be careful."' },
+  { x: 186, z: -166, text: 'A boat with no lamp, gliding toward the middle of the lake at an hour when no boat should be out.' },
   { x: 60, z: -112, text: 'A captain\'s badge, glinting in the reeds below the pier. What was it doing there?' },
   { x: 116, z: -94, text: 'A song drifts over the water. Someone is singing for a person who never arrives.' },
   { x: 28, z: 120, text: 'Cold water. A hand reaches for your lantern. Then the light goes out.' },
-  { x: 22, z: 76, text: 'You remember your name now. Not the one the town gave you. The one he did.' },
+  { x: -34, z: -236, text: 'You remember your name now. Not the one the town gave you. The one he did.' },
 ];
 
 export const VISTAS = [
@@ -515,6 +515,10 @@ export const VISTAS = [
   { id: 'ridge', x: -136, z: -46, name: 'Pine ridge', text: 'An ocean of pines, and somewhere in it the manor\'s broken towers.' },
   { id: 'hilltop', x: -104, z: 68, name: 'Watchtower hilltop', text: 'The festival square glows far off, small and brave in the valley.' },
   { id: 'marshlook', x: 118, z: 84, name: 'Marsh lookout', text: 'Mist curls over the marsh. In the middle, a ring of standing stones.' },
+  { id: 'summit', x: -46, z: -244, name: 'Frostpeak summit', text: 'Snow, silence, and the whole valley glittering far below.' },
+  { id: 'maplecrown', x: 246, z: 42, name: 'Under the Great Maple', text: 'Red leaves drift down like slow embers.' },
+  { id: 'windhill', x: 204, z: -204, name: 'Windmill ridge', text: 'Clouds race past close enough to touch.' },
+  { id: 'petals', x: -72, z: 232, name: 'Petal terrace', text: 'Pink petals swirl around a tiny pagoda lantern.' },
 ];
 
 export const CHESTS = [
@@ -523,14 +527,21 @@ export const CHESTS = [
   { id: 'c7', x: -132, z: 112, tier: 2, hidden: true }, { id: 'c8', x: 102, z: -86, tier: 1 }, { id: 'c9', x: 66, z: 98, tier: 2 },
   { id: 'c10', x: 98, z: 128, tier: 3, hidden: true }, { id: 'c11', x: 10, z: -62, tier: 0 }, { id: 'c12', x: -20, z: 62, tier: 0 },
   { id: 'c13', x: 128, z: -76, tier: 3, hidden: true }, { id: 'c14', x: -148, z: 12, tier: 3, hidden: true },
+  { id: 'c15', x: 226, z: 48, tier: 2 }, { id: 'c16', x: 244, z: -32, tier: 3, hidden: true },
+  { id: 'c17', x: -38, z: -214, tier: 2 }, { id: 'c18', x: 12, z: -244, tier: 3, hidden: true },
+  { id: 'c19', x: 192, z: -150, tier: 2 }, { id: 'c20', x: 158, z: -198, tier: 3, hidden: true },
+  { id: 'c21', x: -56, z: 188, tier: 1 }, { id: 'c22', x: -8, z: 232, tier: 2, hidden: true },
+  { id: 'c23', x: -230, z: -22, tier: 2 }, { id: 'c24', x: -196, z: 34, tier: 3, hidden: true },
+  { id: 'c25', x: 150, z: 120, tier: 2 }, { id: 'c26', x: -150, z: -150, tier: 2 },
 ];
 
 export const HERBS = [
   [-40, 20], [-60, -10], [-30, 48], [12, 52], [30, 64], [-12, -58], [26, -60], [-78, -30], [-50, -80], [-112, -60],
   [-70, 60], [-110, 40], [44, 72], [70, -70], [10, 98], [-24, 96], [-140, -10], [40, -84],
+  [196, 0], [230, 30], [-20, 180], [-60, 212], [-190, -30], [-230, 10], [-30, -190], [160, -178], [140, 150], [-160, 140],
 ];
 
-export const RIFT_SPOTS = [[-30, -96], [-138, 40], [18, 98], [112, -78], [-60, 58], [-20, 120]];
+export const RIFT_SPOTS = [[-30, -96], [-138, 40], [18, 98], [112, -78], [-60, 58], [-20, 120], [200, -40], [-24, -168], [-186, 40], [-6, 168], [158, -128]];
 
 // ---------------------------------------------------------------- deeds
 export const DEEDS = [
@@ -540,9 +551,10 @@ export const DEEDS = [
   { id: 'lv20', name: 'Legend of Lanternmere', desc: 'Reach level 20.', test: (s) => s.player.level >= 20, gold: 500 },
   { id: 'kills100', name: 'Hollow hunter', desc: 'Defeat 100 hollows.', test: (s) => s.stats.kills >= 100, prog: (s) => [s.stats.kills, 100], gold: 200 },
   { id: 'chests10', name: 'Treasure seeker', desc: 'Open 10 chests.', test: (s) => s.stats.chests >= 10, prog: (s) => [s.stats.chests, 10], gold: 150 },
-  { id: 'shrines', name: 'Keeper of flames', desc: 'Light all 6 lantern shrines.', test: (s) => s.world.shrines.length >= 6, prog: (s) => [s.world.shrines.length, 6], gold: 200 },
+  { id: 'shrines', name: 'Keeper of flames', desc: `Light all ${SHRINES.length} lantern shrines.`, test: (s) => s.world.shrines.length >= SHRINES.length, prog: (s) => [s.world.shrines.length, SHRINES.length], gold: 300 },
   { id: 'shards', name: 'Every memory', desc: 'Find all 10 memory shards.', test: (s) => s.world.shards.length >= 10, prog: (s) => [s.world.shards.length, 10], gold: 300 },
-  { id: 'vistas', name: 'Wanderer\'s eye', desc: 'Find all 4 vistas.', test: (s) => s.world.vistas.length >= 4, prog: (s) => [s.world.vistas.length, 4], gold: 120 },
+  { id: 'vistas', name: 'Wanderer\'s eye', desc: 'Find all 8 viewpoints.', test: (s) => s.world.vistas.length >= 8, prog: (s) => [s.world.vistas.length, 8], gold: 200 },
+  { id: 'regions', name: 'Far horizons', desc: 'Discover all five outer regions.', test: (s) => ['maples', 'snow', 'highlands', 'blossom', 'quarry'].every((z) => s.world.zones.includes(z)), prog: (s) => [['maples', 'snow', 'highlands', 'blossom', 'quarry'].filter((z) => s.world.zones.includes(z)).length, 5], gold: 250 },
   { id: 'legend', name: 'Touched by legend', desc: 'Find a Legendary item.', test: (s) => s.stats.legendaries >= 1, gold: 100 },
   { id: 'friend', name: 'Kindred spirit', desc: 'Reach 90 friendship with anyone in town.', test: (s) => Object.values(s.npc).some((n) => n.aff >= 90), gold: 250 },
   { id: 'bond', name: 'Inseparable', desc: 'Reach bond level 10 with your fox.', test: (s) => s.fox.bondLevel >= 10, prog: (s) => [s.fox.bondLevel, 10], gold: 300 },

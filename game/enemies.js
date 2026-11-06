@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { G } from './state.js';
 import { makeEnemy, makeTelegraph, animateHumanoid } from './models.js';
-import { groundY, isDeepWater, heightAt, ZONES, zoneAt, isNight, PLACES, MAP_R, lakeE } from './world.js';
+import { groundY, isDeepWater, heightAt, ZONES, zoneAt, isNight, PLACES, MAP_R, lakeE, SHRINES, pathDist } from './world.js';
 import { angleDiff, rand, randInt, pick, seeded, bus, textSprite, clamp } from './util.js';
 import { projectile, sparks, ring, pillar } from './fx.js';
 import { grantXP } from './story.js';
@@ -12,10 +12,10 @@ import * as UI from './ui.js';
 import * as Audio from './audio.js';
 
 const BASE = {
-  wisp: { name: 'Wisp', hp: (l) => 22 + l * 9, dmg: (l) => 6 + l * 2.2, speed: 5.4, range: 2.2, cd: 1.5, windup: 0.5, xp: (l) => 12 + l * 4, aggro: 14, floats: true, loot: 0.06 },
-  husk: { name: 'Husk', hp: (l) => 52 + l * 18, dmg: (l) => 11 + l * 3.4, speed: 3.3, range: 2.6, cd: 2.2, windup: 0.85, xp: (l) => 22 + l * 6, aggro: 12, aoe: 2.8, loot: 0.1 },
-  eater: { name: 'Lantern-eater', hp: (l) => 34 + l * 12, dmg: (l) => 8 + l * 2.6, speed: 3.8, range: 11, cd: 2.4, windup: 0.65, xp: (l) => 18 + l * 5, aggro: 16, floats: true, ranged: true, loot: 0.09 },
-  brute: { name: 'Marsh Brute', hp: (l) => 120 + l * 30, dmg: (l) => 18 + l * 4.6, speed: 3.0, range: 3.4, cd: 2.6, windup: 1.0, xp: (l) => 55 + l * 10, aggro: 13, aoe: 4, loot: 0.25 },
+  wisp: { name: 'Wisp', hp: (l) => 22 + l * 9, dmg: (l) => 6 + l * 2.2, speed: 5.4, range: 2.2, cd: 1.5, windup: 0.5, xp: (l) => 12 + l * 4, aggro: 9, floats: true, loot: 0.06 },
+  husk: { name: 'Husk', hp: (l) => 52 + l * 18, dmg: (l) => 11 + l * 3.4, speed: 3.3, range: 2.6, cd: 2.2, windup: 0.85, xp: (l) => 22 + l * 6, aggro: 8, aoe: 2.8, loot: 0.1 },
+  eater: { name: 'Lantern-eater', hp: (l) => 34 + l * 12, dmg: (l) => 8 + l * 2.6, speed: 3.8, range: 11, cd: 2.4, windup: 0.65, xp: (l) => 18 + l * 5, aggro: 11, floats: true, ranged: true, loot: 0.09 },
+  brute: { name: 'Marsh Brute', hp: (l) => 120 + l * 30, dmg: (l) => 18 + l * 4.6, speed: 3.0, range: 3.4, cd: 2.6, windup: 1.0, xp: (l) => 55 + l * 10, aggro: 9, aoe: 4, loot: 0.25 },
   knight: { name: 'The Drowned Knight', hp: (l) => 950 + l * 60, dmg: (l) => 18 + l * 3, speed: 4.4, range: 3.6, cd: 1.3, windup: 0.7, xp: () => 420, aggro: 22, boss: true, loot: 1 },
   warden: { name: 'The Mire Warden', hp: (l) => 3400 + l * 150, dmg: (l) => 24 + l * 2.6, speed: 3.6, range: 7, cd: 1.6, windup: 0.9, xp: () => 1600, aggro: 30, boss: true, loot: 1 },
 };
@@ -30,7 +30,7 @@ export class Enemy {
     this.boss = !!b.boss;
     const mult = this.elite ? 2.6 : 1;
     this.maxHp = Math.round(b.hp(level) * mult); this.hp = this.maxHp;
-    this.dmg = b.dmg(level) * (this.elite ? 1.3 : 1);
+    this.dmg = b.dmg(level) * (this.elite ? 1.3 : 1) * 0.85;
     this.model = makeEnemy(type);
     if (this.elite) this.model.scale.setScalar(1.35);
     this.radius = this.model.userData.radius * (this.elite ? 1.35 : 1);
@@ -115,7 +115,7 @@ export class Enemy {
     const toP = Math.atan2(dx, dz);
     const b = this.b;
     const night = isNight();
-    const aggro = (b.aggro + (night ? 4 : 0)) * (this.elite ? 1.3 : 1);
+    const aggro = (b.aggro + (night ? 2 : 0)) * (this.elite ? 1.3 : 1);
     this.cd -= dt;
     let speed = 0, mvx = 0, mvz = 0;
 
@@ -129,7 +129,7 @@ export class Enemy {
         break;
       }
       case 'chase': {
-        const leash = this.boss || this.tag ? 70 : 42;
+        const leash = this.boss || this.tag ? 70 : 28;
         if (!pl.alive || Math.hypot(this.pos.x - this.spawn.x, this.pos.z - this.spawn.z) > leash) { this.state = 'return'; break; }
         this.facing += angleDiff(this.facing, toP) * Math.min(dt * 8, 1);
         if (b.ranged) {
@@ -337,19 +337,28 @@ export function initEnemies() {
     meadow: ['wisp', 'wisp', 'husk'], fields: ['wisp', 'husk', 'wisp'], docks: ['husk', 'wisp'], pines: ['wisp', 'husk', 'eater'],
     manor: ['husk', 'eater'], tower: ['husk', 'eater', 'wisp'], shore: ['eater', 'husk', 'wisp'], north: ['eater', 'husk', 'wisp'],
     marsh: ['brute', 'husk', 'wisp'], wilds: ['wisp', 'husk', 'eater'],
+    maples: ['husk', 'eater', 'wisp'], snow: ['wisp', 'brute', 'eater'], highlands: ['eater', 'brute', 'husk'],
+    blossom: ['wisp', 'eater', 'husk'], quarry: ['husk', 'brute', 'wisp'],
   };
+  // a few fixed groups so every bounty area has hollows to hunt
+  for (const [x, z] of [[-100, -45], [-70, -85], [-110, -70], [-25, 95], [25, 100], [30, -70], [-15, -100]]) {
+    const zone = zoneAt(x, z);
+    camps.push({ x, z, zone, types: zoneTypes[zone.id] || zoneTypes.wilds, max: 2, alive: [], timer: 0 });
+  }
   let tries = 0;
-  while (camps.length < 40 && tries++ < 3000) {
-    const x = (rnd() - 0.5) * 300, z = (rnd() - 0.5) * 300;
+  while (camps.length < 45 && tries++ < 6000) {
+    const x = (rnd() - 0.5) * 520, z = (rnd() - 0.5) * 520;
     const r = Math.hypot(x, z);
-    if (r < 52 || r > 148) continue;
+    if (r < 62 || r > 255) continue;
     if (heightAt(x, z) < 0.2 && !(Math.hypot(x - 70, z - 100) < 45)) continue;
-    if (camps.some((c) => Math.hypot(c.x - x, c.z - z) < 20)) continue;
+    if (camps.some((c) => Math.hypot(c.x - x, c.z - z) < 34)) continue;
+    if (pathDist(x, z) < 12) continue;
+    if (SHRINES.some((s) => Math.hypot(s.x - x, s.z - z) < 24)) continue;
     if (Math.hypot(x - PLACES.bossArena.x, z - PLACES.bossArena.z) < 22) continue;
     if (Math.hypot(x - PLACES.manor.x, z - PLACES.manor.z) < 14) continue;
     const zone = zoneAt(x, z);
     const types = zoneTypes[zone.id] || zoneTypes.wilds;
-    camps.push({ x, z, zone, types, max: 2 + Math.floor(rnd() * 2), alive: [], timer: 0 });
+    camps.push({ x, z, zone, types, max: rnd() < 0.35 ? 2 : 1, alive: [], timer: 0 });
   }
   bus.on('spawnQuest', (id, spec) => spawnQuest(spec));
 }
@@ -401,7 +410,7 @@ export function updateEnemies(dt) {
     if (!keep || (far && !e.tag && !e.boss)) {
       e.remove();
       G.enemies.splice(i, 1);
-      if (e.camp) { e.camp.alive = e.camp.alive.filter((x) => x !== e); if (!keep) e.camp.timer = 50; }
+      if (e.camp) { e.camp.alive = e.camp.alive.filter((x) => x !== e); if (!keep) e.camp.timer = 120; }
     }
   }
   // quest waves
@@ -409,7 +418,7 @@ export function updateEnemies(dt) {
     if (list.wavesLeft > 0 && list.every((e) => !e.alive)) {
       const st = list[0];
       list.wavesLeft--;
-      const next = spawnGroup({ type: 'mix', n: 4, x: st.spawn.x, z: st.spawn.z, lvl: st.level, tag, aggro: true });
+      const next = spawnGroup({ type: 'mix', n: 4, x: st.spawn.x, z: st.spawn.z, lvl: st.level, tag, aggro: true });  // 4 + 4 = the 8 the quest asks for
       next.wavesLeft = list.wavesLeft;
       questSpawns[tag] = next;
       UI.toast('Another wave climbs the hill!', 'warn');
@@ -421,14 +430,14 @@ export function updateEnemies(dt) {
   const night = isNight();
   for (const c of camps) {
     const d = Math.hypot(c.x - pl.pos.x, c.z - pl.pos.z);
-    if (d > 68) continue;
+    if (d > 62) continue;
     c.timer -= 0.5;
-    const max = c.max + (night ? 1 : 0);
-    if (c.alive.length < max && (c.timer <= 0) && d > 26) {
+    const max = c.max;
+    if (c.alive.length < max && (c.timer <= 0) && d > 30) {
       const e = new Enemy(pick(c.types), c.x + rand(-5, 5), c.z + rand(-5, 5), campLevel(c), { camp: c });
       if (isDeepWater(e.pos.x, e.pos.z)) { e.remove(); continue; }
       G.enemies.push(e); c.alive.push(e);
-      c.timer = c.alive.length < c.max ? 0 : 50;
+      c.timer = c.alive.length < c.max ? 0 : 120;
     }
   }
   // the music knows when you're fighting
@@ -439,3 +448,5 @@ export function resetEnemiesNearPlayer() {
   for (const e of G.enemies) if (e.alive && !e.boss) { e.state = 'return'; }
   for (const e of G.enemies) if (e.boss && e.alive) { e.hp = e.maxHp; e.phase = 1; e.state = 'idle'; e.pos.x = e.spawn.x; e.pos.z = e.spawn.z; UI.bossBar(null); }
 }
+
+export { camps }; // read by tests

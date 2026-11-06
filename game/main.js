@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { G, DAY_LENGTH, freshSave } from './state.js';
 import { buildWorld, updateWorld, updateWater, isNight, setShadowQuality, groundY } from './world.js';
 import { initFX, updateFX, clearProjectiles } from './fx.js';
-import { initInput, input, endFrame, hit, requestLock } from './input.js';
+import { initInput, input, endFrame, hit, requestLock, releaseLock } from './input.js';
 import { Player } from './player.js';
 import { Fox } from './fox.js';
 import { initEnemies, updateEnemies, resetEnemiesNearPlayer } from './enemies.js';
@@ -32,7 +32,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 G.renderer = renderer;
 G.scene = new THREE.Scene();
-G.camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 900);
+G.camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 1400);
 G.camera.position.set(40, 30, 80);
 G.clock = new THREE.Clock();
 G.save = freshSave(); // placeholder so the world can draw behind the title screen
@@ -58,7 +58,7 @@ function boot() {
   UI.setTravel(fastTravel);
   UI.setRiftSource(() => activeRifts());
   UI.setSettingsHandlers({
-    change: (k) => { saveSettings(); if (k === 'quality') { setShadowQuality(G.settings.quality); renderer.shadowMap.enabled = G.settings.quality !== 'low'; } },
+    change: (k) => { saveSettings(); if (k === 'controls' && G.settings.controls !== 'mouse') { releaseLock(); if (G.player) G.player.camOffset = 0; } if (k === 'quality') { setShadowQuality(G.settings.quality); renderer.shadowMap.enabled = G.settings.quality !== 'low'; } },
     quit: () => { writeSave(); location.reload(); },
   });
   setShadowQuality(G.settings.quality);
@@ -107,7 +107,8 @@ function startGame(save, isNew) {
     G.player.recompute(); G.player.healFull();
     S.startQuest('m1');
     UI.zoneTitle('Lanternmere', 'Festival week, the third night since Lord Aurel drowned');
-    setTimeout(() => UI.toast('Click the game to look around. WASD to move. Talk to Mira, she is waving you over.', 'info'), 2600);
+    setTimeout(() => UI.toast(G.settings.controls === 'mouse' ? 'Click the game to look around. WASD to move. Mira is waving you over.' : 'W walks forward, A and D turn. Mira is waving you over.', 'info'), 2600);
+    if (!G.settings.seenControls) setTimeout(() => UI.toggleControls(true), 900);
   } else {
     respawnActiveQuestEnemies();
     UI.toast(`Welcome back. Day ${G.day} in Lanternmere.`, 'info');
@@ -130,7 +131,7 @@ bus.on('itemsChanged', () => { if (G.player) G.player.recompute(); UI.refreshPan
 canvas.addEventListener('click', () => {
   if (!G.started || G.paused || G.inDialogue) return;
   Audio.initAudio();
-  requestLock(canvas);
+  if (G.settings.controls === 'mouse') requestLock(canvas);
 });
 document.getElementById('lock-hint').addEventListener('click', () => requestLock(canvas));
 
@@ -158,7 +159,9 @@ function loop() {
     if (hit('c') || hit('i') || hit('Tab')) UI.togglePanel('character');
     if (hit('j')) UI.togglePanel('journal');
     if (hit('m')) UI.togglePanel('map');
-    if (hit('Escape')) { if (UI.isPanelOpen()) UI.closePanel(); else UI.openPanel('settings'); }
+    if (hit('h')) UI.toggleControls();
+    if (UI.controlsOpen() && (hit('Escape') || hit('Enter'))) UI.toggleControls(false);
+    if (hit('Escape') && !UI.controlsOpen()) { if (UI.isPanelOpen()) UI.closePanel(); else UI.openPanel('settings'); }
   }
 
   const simDt = G.paused ? 0 : (G.hitStop > 0 ? dt * 0.08 : dt);

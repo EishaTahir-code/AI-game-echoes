@@ -18,18 +18,25 @@ Then open http://localhost:8000.
 
 ## Controls
 
+No mouse needed to move: when you turn, the camera turns with you. Press **H** in the game to see this list.
+
 | Key | Action |
 | --- | --- |
-| Click the game | Look around with the mouse |
-| W A S D, Shift | Move, sprint |
-| Left click | Attack (click again to combo) |
+| W / ↑ | Walk forward |
+| S / ↓ | Walk backward |
+| A D / ← → | Turn left and right (the camera follows) |
+| Shift | Sprint (you also jog faster automatically when travelling) |
+| Left click | Attack, aimed at the nearest hollow |
 | Space | Dodge roll |
 | 1 2 3 4 | Skills (unlock as you level up and bond with your fox) |
 | Q | Drink a Lantern Tonic |
 | E | Talk, open, pick up |
 | F | Pet your fox |
 | C, J, M | Character and bag, journal, map |
+| H | Show the controls |
 | Esc | Menus and settings |
+
+Prefer mouse-look? Switch **Controls** to "Mouse look" in Settings (Esc).
 
 ## What's in it
 
@@ -37,7 +44,7 @@ Then open http://localhost:8000.
 - **People who remember:** friendship hearts, gifts, and dialogue that changes with what you did. Gossip spreads overnight.
 - **Spirit fox companion:** you name it. Its bond grows as you play and unlocks perks: fighting beside you, Fox Flame, fetching loot, healing you, and saving you from falling once a day.
 - **Progression:** levels, stat points, four skills, gear in five rarities, an upgrade forge and a shop that restocks daily.
-- **Exploration:** six lantern shrines (fast travel), hidden chests, 10 memory shards that tell the fox's story, viewpoints, a fog-of-war map and a day/night cycle.
+- **Exploration:** the lakeside valley plus five outer regions (Maplewood, Frostpeak Pass, Cloudrest Highlands, Blossom Hills, Old Quarry), eleven lantern shrines for fast travel, hidden chests, 10 memory shards that tell the fox's story, eight viewpoints, a fog-of-war map and a day/night cycle.
 
 Progress saves automatically in the browser.
 

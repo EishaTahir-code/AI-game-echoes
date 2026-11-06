@@ -31,6 +31,9 @@ export class Player {
     this.camYaw = (sp.yaw || 0) + Math.PI;
     this.camPitch = 0.38;
     this.camDist = 9.5;
+    this.camOffset = 0; // extra look-around from dragging the mouse (steering mode)
+    this.cruise = 0;    // builds up while travelling, for a faster jog
+    this.snap = true;   // put the camera straight behind the hero (after teleports)
     this.vel = { x: 0, z: 0 };
     this.state = 'idle';
     this.t = 0;
@@ -88,32 +91,58 @@ export class Player {
     if (this.staminaDelay <= 0) this.stamina = Math.min(100, this.stamina + 32 * dt);
 
     const canAct = !G.paused && !G.inDialogue;
+    const steer = G.settings.controls !== 'mouse';
+    // keyboard
+    let fwdIn = 0, turnIn = 0;
+    if (canAct) {
+      if (down('w') || down('ArrowUp')) fwdIn += 1;
+      if (down('s') || down('ArrowDown')) fwdIn -= 1;
+      if (down('a') || down('ArrowLeft')) turnIn += 1;
+      if (down('d') || down('ArrowRight')) turnIn -= 1;
+    }
+    this.turning = turnIn;
     // camera
     if (canAct) {
       const sens = 0.0024 * G.settings.sensitivity;
-      this.camYaw -= input.dx * sens;
+      if (steer) {
+        // optional: drag with the right mouse button to glance around; the view eases back behind you
+        this.camOffset -= input.dx * sens;
+        if (!input.rightDown) this.camOffset *= Math.max(0, 1 - dt * (fwdIn || turnIn ? 4 : 1.2));
+      } else this.camYaw -= input.dx * sens;
       this.camPitch = clamp(this.camPitch + input.dy * sens, -0.15, 1.15);
       this.camDist = clamp(this.camDist + input.wheel * 0.8, 4.5, 16);
     }
 
     // movement intent
-    let mx = 0, mz = 0;
-    if (canAct) {
-      if (down('w') || down('ArrowUp')) mz -= 1;
-      if (down('s') || down('ArrowDown')) mz += 1;
-      if (down('a') || down('ArrowLeft')) mx -= 1;
-      if (down('d') || down('ArrowRight')) mx += 1;
+    let dir, dl;
+    if (steer) {
+      // A/D and the left/right arrows turn the hero, and the camera swings around with them
+      if (turnIn && this.state !== 'dodge' && this.dashT <= 0) this.facing += turnIn * 2.6 * dt * (this.state === 'attack' ? 0.5 : 1);
+      const back = fwdIn < 0 ? -1 : 1;
+      dir = { x: Math.sin(this.facing) * back, z: Math.cos(this.facing) * back };
+      dl = fwdIn ? 1 : 0;
+      this.backing = fwdIn < 0;
+    } else {
+      const mx = -turnIn, mz = -fwdIn;
+      const fwd = { x: -Math.sin(this.camYaw), z: -Math.cos(this.camYaw) };
+      const right = { x: Math.cos(this.camYaw), z: -Math.sin(this.camYaw) };
+      dir = { x: fwd.x * -mz + right.x * mx, z: fwd.z * -mz + right.z * mx };
+      dl = Math.hypot(dir.x, dir.z);
+      if (dl > 0) { dir.x /= dl; dir.z /= dl; }
+      this.backing = false;
     }
-    const fwd = { x: -Math.sin(this.camYaw), z: -Math.cos(this.camYaw) };
-    const right = { x: Math.cos(this.camYaw), z: -Math.sin(this.camYaw) };
-    let dir = { x: fwd.x * -mz + right.x * mx, z: fwd.z * -mz + right.z * mx };
-    const dl = Math.hypot(dir.x, dir.z);
-    if (dl > 0) { dir.x /= dl; dir.z /= dl; }
 
     // actions
     if (canAct) {
       if ((input.clicked || (input.mouseDown && this.state !== 'attack')) && this.state !== 'dodge') this.tryAttack();
-      if (hit(' ') && this.state !== 'dodge' && this.stamina >= 20) this.startDodge(dl > 0 ? dir : { x: Math.sin(this.facing), z: Math.cos(this.facing) });
+      if (hit(' ') && this.state !== 'dodge' && this.stamina >= 20) {
+        let dd = { x: Math.sin(this.facing), z: Math.cos(this.facing) };
+        if (steer) {
+          if (fwdIn < 0) dd = { x: -dd.x, z: -dd.z };
+          else if (!fwdIn && turnIn) { const a = this.facing + (turnIn * Math.PI) / 2; dd = { x: Math.sin(a), z: Math.cos(a) }; }
+        } else if (dl > 0) dd = dir;
+        this.startDodge(dd, steer);
+      }
       for (let i = 0; i < 4; i++) if (hit(SKILLS[i].key)) this.useSkill(i);
       if (hit('q')) this.drink();
     }
@@ -147,16 +176,20 @@ export class Player {
     } else {
       const sprint = down('Shift') && dl > 0 && this.stamina > 1;
       speed = dl > 0 ? this.stats.speed * (sprint ? 1.55 : 1) : 0;
+      if (this.backing) speed *= 0.6;
+      // out of combat you settle into a faster jog, so the bigger world doesn't feel slow
+      this.cruise = dl > 0 && !this.backing && !sprint && this.combatTimer <= 0 ? Math.min(1, this.cruise + dt / 1.2) : 0;
+      speed *= 1 + 0.4 * this.cruise;
       if (inMarshWater && !this.uniques.has('mirewalker')) speed *= 0.72;
       if (sprint) { this.stamina -= 16 * dt; this.staminaDelay = 0.5; }
       this.move(dir.x * speed, dir.z * speed, dt);
-      if (dl > 0) this.facing += angleDiff(this.facing, Math.atan2(dir.x, dir.z)) * Math.min(dt * 14, 1);
+      if (dl > 0 && !steer) this.facing += angleDiff(this.facing, Math.atan2(dir.x, dir.z)) * Math.min(dt * 14, 1);
       this.state = dl > 0 ? 'move' : 'idle';
       if (this.comboReset > 0) { this.comboReset -= dt; if (this.comboReset <= 0) this.combo = 0; }
     }
     if (this.moonfallT > 0) { this.moonfallT -= dt; if (this.moonfallT <= 0) this.moonfallImpact(); }
     this.speedNow = speed;
-    this.updateModel(dt, speed);
+    this.updateModel(dt, speed || (turnIn && this.state === 'idle' ? 2.5 : 0));
     this.updateCamera(dt);
   }
 
@@ -175,7 +208,7 @@ export class Player {
     const r = Math.hypot(p.x, p.z);
     if (r > MAP_R) { p.x *= MAP_R / r; p.z *= MAP_R / r; }
     // block steep mountain climbs
-    if (heightAt(p.x, p.z) - heightAt(this.pos.x, this.pos.z) > 1.4 * Math.max(dt * 10, 0.3) && r > 145) return;
+    if (heightAt(p.x, p.z) - heightAt(this.pos.x, this.pos.z) > 1.4 * Math.max(dt * 10, 0.3) && r > 258) return;
     this.pos.x = p.x; this.pos.z = p.z;
     const gy = onPier(p.x, p.z) ? Math.max(pier.y, groundY(p.x, p.z)) : groundY(p.x, p.z);
     this.y = lerp(this.y, gy, Math.min(dt * 18, 1));
@@ -190,16 +223,18 @@ export class Player {
     this.state = 'attack';
     this.attackT = this.combo === 2 ? 0.46 : 0.36;
     this.hitDone = false;
-    // soft lock: face the nearest enemy in front, otherwise face the camera direction
-    const camF = Math.atan2(-Math.sin(this.camYaw), -Math.cos(this.camYaw));
-    let best = null, bd = 6.5;
+    // soft lock: face the nearest enemy in front (or right beside you)
+    const steer = G.settings.controls !== 'mouse';
+    const aim = steer ? this.facing : Math.atan2(-Math.sin(this.camYaw), -Math.cos(this.camYaw));
+    let best = null, bd = 7;
     for (const e of G.enemies) {
       if (!e.alive) continue;
       const d = Math.hypot(e.pos.x - this.pos.x, e.pos.z - this.pos.z) - e.radius;
       const a = Math.atan2(e.pos.x - this.pos.x, e.pos.z - this.pos.z);
-      if (d < bd && Math.abs(angleDiff(camF, a)) < 1.3) { bd = d; best = a; }
+      const inCone = Math.abs(angleDiff(aim, a)) < (steer ? 1.7 : 1.3);
+      if (d < bd && (inCone || d < 2.5)) { bd = d; best = a; }
     }
-    this.facing = best ?? camF;
+    this.facing = best ?? aim;
     Audio.sfx('swing');
   }
   applySwing() {
@@ -235,10 +270,10 @@ export class Player {
     return dmg;
   }
 
-  startDodge(dir) {
+  startDodge(dir, keepFacing = false) {
     this.state = 'dodge'; this.dodgeT = 0.42; this.iframes = 0.38;
     this.dodgeDir = { x: dir.x, z: dir.z };
-    this.facing = Math.atan2(dir.x, dir.z);
+    if (!keepFacing) this.facing = Math.atan2(dir.x, dir.z);
     this.stamina -= 22; this.staminaDelay = 0.7;
     Audio.sfx('dodge');
   }
@@ -265,7 +300,7 @@ export class Player {
       G.shake = 0.4;
     } else if (i === 2) {
       const camF = Math.atan2(-Math.sin(this.camYaw), -Math.cos(this.camYaw));
-      this.facing = this.state === 'move' ? this.facing : camF;
+      if (G.settings.controls === 'mouse' && this.state !== 'move') this.facing = camF;
       this.dodgeDir = { x: Math.sin(this.facing), z: Math.cos(this.facing) };
       this.dashT = 0.26; this.iframes = 0.35; this.dashHit = new Set(); this.state = 'dash';
       sparks(this.pos.x, this.y + 1, this.pos.z, s.color, 24, 6, 0.5);
@@ -328,7 +363,7 @@ export class Player {
     const lost = Math.floor(G.save.player.gold * 0.1);
     G.save.player.gold -= lost;
     this.pos.x = r.x; this.pos.z = r.z + 3; this.y = groundY(this.pos.x, this.pos.z);
-    this.alive = true; this.state = 'idle';
+    this.alive = true; this.state = 'idle'; this.snap = true;
     this.healFull();
     this.iframes = 2;
     bus.emit('respawn', lost);
@@ -375,20 +410,25 @@ export class Player {
       cam.lookAt(this._look);
       return;
     }
+    if (G.settings.controls !== 'mouse') {
+      const target = this.facing + Math.PI + this.camOffset;
+      this.camYaw += angleDiff(this.camYaw, target) * (this.snap ? 1 : Math.min(dt * 5, 1));
+    }
     const cp = Math.cos(this.camPitch), spch = Math.sin(this.camPitch);
     // pull the camera in when a building is in the way
     let dist = this.camDist;
     for (let t = 0.2; t <= 1; t += 0.08) {
       const sx = this.pos.x + Math.sin(this.camYaw) * this.camDist * cp * t, sz = this.pos.z + Math.cos(this.camYaw) * this.camDist * cp * t;
       const sy = head + spch * this.camDist * t;
-      if (sy - groundY(sx, sz) < 9 && G.colliders.insideBox(sx, sz)) { dist = Math.max(2.2, this.camDist * (t - 0.1)); break; }
+      if (sy - groundY(sx, sz) < 7.5 && G.colliders.insideBox(sx, sz)) { dist = Math.max(3.2, this.camDist * (t - 0.1)); break; }
     }
     let cx = this.pos.x + Math.sin(this.camYaw) * dist * cp;
     let cz = this.pos.z + Math.cos(this.camYaw) * dist * cp;
     let cy = head + spch * dist;
     const gy = heightAt(cx, cz) + 0.8;
     if (cy < gy) cy = gy;
-    const k = Math.min(dt * 12, 1);
+    const k = this.snap ? 1 : Math.min(dt * 12, 1);
+    this.snap = false;
     cam.position.x = lerp(cam.position.x, cx, k);
     cam.position.y = lerp(cam.position.y, cy, k);
     cam.position.z = lerp(cam.position.z, cz, k);

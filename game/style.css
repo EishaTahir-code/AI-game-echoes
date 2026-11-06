@@ -94,14 +94,14 @@ body.talking #hud > :not(#toasts):not(#banner):not(#fox-says):not(#lootfeed):not
 .fox-dot { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle, #ffe0a0, var(--ember)); box-shadow: 0 0 8px var(--ember); }
 .bar.bond > div { background: linear-gradient(90deg, var(--ember), #ffd28a); }
 
-#nav { position: absolute; top: 18px; right: 18px; width: 196px; display: grid; justify-items: center; gap: 6px; }
-.mini-wrap { position: relative; width: 188px; height: 188px; border-radius: 50%; padding: 4px; background: var(--wood); box-shadow: 0 0 0 1px rgba(255, 181, 71, 0.4), 0 6px 20px rgba(0, 0, 0, 0.4); }
-#minimap { width: 180px; height: 180px; border-radius: 50%; display: block; }
+#nav { position: absolute; top: 18px; right: 18px; width: 256px; display: grid; justify-items: center; gap: 6px; }
+.mini-wrap { position: relative; width: 248px; height: 248px; border-radius: 50%; padding: 4px; background: var(--wood); box-shadow: 0 0 0 1px rgba(255, 181, 71, 0.4), 0 6px 20px rgba(0, 0, 0, 0.4); }
+#minimap { width: 240px; height: 240px; border-radius: 50%; display: block; }
 .mini-n { position: absolute; top: -2px; left: 50%; transform: translateX(-50%); font: 700 12px var(--display); background: var(--wood); color: var(--amber); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
 #clock { font: italic 500 15px var(--display); text-shadow: 0 1px 3px #000; }
 #gold { display: flex; align-items: center; gap: 6px; font-weight: 700; text-shadow: 0 1px 3px #000; }
 .coin { display: inline-block; width: 13px; height: 13px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2b0, #ffc94a 50%, #b07a10); box-shadow: 0 0 0 1px #6a4a10; }
-#tracker { position: absolute; top: 278px; right: 18px; width: 280px; padding: 14px 16px; }
+#tracker { position: absolute; top: 338px; right: 18px; width: 280px; padding: 14px 16px; }
 #tracker-title { font: 600 18px/1.2 var(--display); color: var(--amber); margin-bottom: 4px; }
 #tracker-step { font-size: 14px; }
 #tracker-step b { color: var(--amber); white-space: nowrap; }
@@ -287,8 +287,9 @@ body.talking #hud > :not(#toasts):not(#banner):not(#fox-says):not(#lootfeed):not
 .mem p { margin: 0; font: italic 400 16px var(--display); }
 .mem.locked p { color: var(--mist); font-style: normal; font-family: var(--ui); font-size: 14px; }
 .mnum { font: 700 18px var(--display); color: #9fe8ff; width: 22px; }
-.mapwrap { display: grid; grid-template-columns: minmax(0, 620px) 1fr; gap: 20px; }
-#bigmap { width: 100%; aspect-ratio: 1; border-radius: 10px; box-shadow: 0 0 0 3px var(--wood), 0 0 0 4px rgba(255, 181, 71, 0.35); }
+.mapwrap { display: grid; grid-template-columns: auto 240px; gap: 20px; justify-content: center; }
+.panel-card.wide { width: min(1320px, 97vw); height: min(980px, 95vh); }
+#bigmap { height: calc(min(980px, 95vh) - 120px); max-width: calc(97vw - 320px); width: auto; aspect-ratio: 1; border-radius: 10px; box-shadow: 0 0 0 3px var(--wood), 0 0 0 4px rgba(255, 181, 71, 0.35); }
 .legend ul { list-style: none; padding: 0; display: grid; gap: 6px; }
 .lg { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: middle; border: 1.5px solid var(--lake); }
 .lg.sh { background: var(--amber); } .lg.q { background: var(--amber); transform: rotate(45deg); } .lg.npc { background: var(--washi); border-radius: 50%; } .lg.rift { background: #b59cf2; border-radius: 50%; }
@@ -333,3 +334,12 @@ body.talking #hud > :not(#toasts):not(#banner):not(#fox-says):not(#lootfeed):not
   .char { grid-template-columns: 1fr; }
   .grid { grid-template-columns: repeat(auto-fill, 52px); }
 }
+
+/* controls guide (H) */
+#controls-card { position: fixed; inset: 0; z-index: 34; display: grid; place-items: center; background: rgba(12, 18, 32, 0.45); }
+#controls-card .cc-inner { position: relative; width: min(560px, 92vw); padding: 26px 30px; border-radius: 12px; background: rgba(30, 42, 68, 0.97); box-shadow: 0 0 0 1px rgba(255, 181, 71, 0.4), 0 20px 50px rgba(0, 0, 0, 0.5); }
+#controls-card h2 { font: italic 700 28px var(--display); margin: 0 0 4px; }
+#controls-card .keys { margin: 16px 0; font-size: 15px; gap: 8px 18px; }
+#controls-card .keys dt { white-space: nowrap; }
+.skill.help { box-shadow: 0 0 0 1px rgba(246, 235, 211, 0.25); width: 56px; }
+.skill.help .skey { color: var(--washi); }

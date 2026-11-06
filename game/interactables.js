@@ -252,7 +252,7 @@ function nextWave(r) {
   const lvl = G.save.player.level + Math.min(G.save.world.riftsCleared, 6);
   const types = ['wisp', 'husk', 'eater'];
   r.enemies = [];
-  for (let k = 0; k < 2 + r.wave; k++) r.enemies.push(...spawnGroup({ type: types[(k + r.wave) % 3], n: 1, x: r.x + Math.cos(k * 2.1) * 6, z: r.z + Math.sin(k * 2.1) * 6, lvl, tag: 'rift', aggro: true }));
+  for (let k = 0; k < 1 + r.wave; k++) r.enemies.push(...spawnGroup({ type: types[(k + r.wave) % 3], n: 1, x: r.x + Math.cos(k * 2.1) * 6, z: r.z + Math.sin(k * 2.1) * 6, lvl, tag: 'rift', aggro: true }));
   if (r.wave === 3) r.enemies.push(...spawnGroup({ type: G.save.player.level >= 8 ? 'brute' : 'husk', n: 1, x: r.x, z: r.z + 4, lvl: lvl + 1, tag: 'rift', aggro: true, elite: 'Rift Champion' }));
   UI.toast(`Wave ${r.wave} of 3`, 'warn');
 }
@@ -337,6 +337,7 @@ export function fastTravel(id) {
   UI.fade(() => {
     G.player.pos.x = s.x + 2.5; G.player.pos.z = s.z + 2.5;
     G.player.y = groundY(G.player.pos.x, G.player.pos.z);
+    G.player.snap = true;
     if (G.fox) { G.fox.pos.x = s.x + 1; G.fox.pos.z = s.z + 3; }
     G.save.player.respawn = { x: s.x, z: s.z };
     G.player.healFull();

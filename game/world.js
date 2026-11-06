@@ -7,6 +7,15 @@ import { clamp, lerp, smoothstep, fbm, noise2, seeded, glowTexture } from './uti
 export const LAKE = { x: 95, z: 0, rx: 58, rz: 64 };
 export const MARSH = { x: 70, z: 100, r: 42 };
 export const HILL = { x: -90, z: 80, r: 24, h: 15 };
+// the outer regions beyond the valley
+export const REG = {
+  maples: { x: 215, z: 15, r: 62 },
+  snow: { x: -15, z: -212, r: 64 },
+  highlands: { x: 178, z: -172, r: 56 },
+  blossom: { x: -35, z: 205, r: 62 },
+  quarry: { x: -212, z: 5, r: 58 },
+};
+export const WORLD_HALF = 300;
 
 export const PLACES = {
   start: { x: -2, z: 8, name: 'Festival Square' },
@@ -17,6 +26,8 @@ export const PLACES = {
   watchtower: { x: -94, z: 76 }, bossArena: { x: 86, z: 116 },
   charm: { x: -84, z: -18 },
   lanternPieces: [{ x: 36, z: -28 }, { x: 31, z: 44 }, { x: 58, z: 60 }],
+  greatMaple: { x: 232, z: -6 }, frostArch: { x: -28, z: -226 }, windmill: { x: 192, z: -184 },
+  pagoda: { x: -52, z: 216 }, quarryCrane: { x: -226, z: 20 },
 };
 
 export const SHRINES = [
@@ -26,6 +37,11 @@ export const SHRINES = [
   { id: 'tower', x: -84, z: 88, name: 'Watchtower Shrine' },
   { id: 'shore', x: 96, z: -80, name: 'Moonlit Shore Shrine' },
   { id: 'marsh', x: 52, z: 88, name: 'Mirefen Shrine' },
+  { id: 'maples', x: 206, z: 32, name: 'Maplewood Shrine' },
+  { id: 'snow', x: -4, z: -200, name: 'Frostpeak Shrine' },
+  { id: 'highlands', x: 166, z: -158, name: 'Cloudrest Shrine' },
+  { id: 'blossom', x: -22, z: 196, name: 'Blossom Hill Shrine' },
+  { id: 'quarry', x: -200, z: -10, name: 'Quarry Shrine' },
 ];
 
 export const ZONES = [
@@ -39,7 +55,12 @@ export const ZONES = [
   { id: 'marsh', name: 'Mirefen Marsh', x: 72, z: 102, r: 48, lvl: [9, 12] },
   { id: 'fields', name: 'Southern Fields', x: 0, z: 85, r: 60, lvl: [2, 5] },
   { id: 'north', name: 'North Meadow', x: 10, z: -85, r: 50, lvl: [4, 6] },
-  { id: 'wilds', name: 'The Wilds', x: 0, z: 0, r: 999, lvl: [4, 8] },
+  { id: 'maples', name: 'Maplewood', x: 215, z: 15, r: 64, lvl: [8, 11] },
+  { id: 'snow', name: 'Frostpeak Pass', x: -15, z: -212, r: 66, lvl: [11, 14] },
+  { id: 'highlands', name: 'Cloudrest Highlands', x: 178, z: -172, r: 58, lvl: [12, 15] },
+  { id: 'blossom', name: 'Blossom Hills', x: -35, z: 205, r: 64, lvl: [5, 8] },
+  { id: 'quarry', name: 'Old Quarry', x: -212, z: 5, r: 60, lvl: [7, 10] },
+  { id: 'wilds', name: 'The Wilds', x: 0, z: 0, r: 999, lvl: [5, 9] },
 ];
 
 const PATHS = [
@@ -50,6 +71,12 @@ const PATHS = [
   [[-6, -6], [-34, -26], [-72, -52], [-94, -86], [-108, -104]],
   [[4, 10], [8, 50], [36, 80], [52, 88], [86, 116]],
   [[20, 30], [28, 34]],
+  // roads to the outer regions
+  [[96, -80], [158, -64], [200, -20], [212, 20]],
+  [[8, -80], [-2, -140], [-6, -192]],
+  [[50, -100], [110, -134], [160, -154]],
+  [[8, 50], [2, 120], [-18, 188]],
+  [[-48, 4], [-120, 10], [-192, -6]],
 ];
 
 function segDist(px, pz, ax, az, bx, bz) {
@@ -81,6 +108,16 @@ export function heightAt(x, z) {
   // watchtower hill
   const dh = Math.hypot(x - HILL.x, z - HILL.z);
   h += HILL.h * Math.exp(-(dh * dh) / (2 * HILL.r * HILL.r));
+  // outer regions
+  const reg = (R) => smoothstep(R.r + 18, R.r - 14, Math.hypot(x - R.x, z - R.z));
+  const sw = reg(REG.snow);
+  if (sw > 0) h += sw * (12 + fbm(x * 0.05, z * 0.05) * 7);
+  const hw = reg(REG.highlands);
+  if (hw > 0) h += hw * (6 + fbm(x * 0.03 + 5, z * 0.03) * 6);
+  const qw = reg(REG.quarry);
+  if (qw > 0) { const t = (h - 1) / 2.4, f = Math.floor(t); h = lerp(h, (f + smoothstep(0.2, 0.8, t - f)) * 2.4 + 0.5, qw * 0.8); } // soft terraces
+  // no stray ponds out in the wilds
+  if (r > 140) h = Math.max(h, 0.7);
   // lake bowl
   const e = lakeE(x, z);
   h = lerp(h, -5 - (1 - Math.min(e, 1)) * 2, smoothstep(1.32, 0.86, e));
@@ -92,12 +129,12 @@ export function heightAt(x, z) {
   const da = Math.hypot(x - PLACES.bossArena.x, z - PLACES.bossArena.z);
   h = lerp(h, 0.6, smoothstep(16, 10, da));
   // mountains ring
-  if (r > 150) h += Math.pow(r - 150, 1.45) * 0.55 + fbm(x * 0.03, z * 0.03) * (r - 150) * 0.35;
+  if (r > 265) h += Math.pow(r - 265, 1.45) * 0.55 + fbm(x * 0.03, z * 0.03) * (r - 265) * 0.35;
   return h;
 }
 export const groundY = (x, z) => Math.max(heightAt(x, z), -0.35);
 export const isDeepWater = (x, z) => heightAt(x, z) < -0.9;
-export const MAP_R = 168;
+export const MAP_R = 278;
 
 export function zoneAt(x, z) {
   for (const zn of ZONES) if (Math.hypot(x - zn.x, z - zn.z) < zn.r) return zn;
@@ -112,14 +149,21 @@ class Colliders {
     for (let i = Math.floor((x - ext) / c); i <= Math.floor((x + ext) / c); i++)
       for (let j = Math.floor((z - ext) / c); j <= Math.floor((z + ext) / c); j++) fn(i * 100003 + j);
   }
-  addCircle(x, z, r) { const o = { t: 'c', x, z, r }; this._cells(x, z, r, (k) => { if (!this.map.has(k)) this.map.set(k, []); this.map.get(k).push(o); }); return o; }
+  addCircle(x, z, r, tree = false) { const o = { t: 'c', x, z, r, tree }; this._cells(x, z, r, (k) => { if (!this.map.has(k)) this.map.set(k, []); this.map.get(k).push(o); }); return o; }
   addBox(x, z, hw, hd) { const o = { t: 'b', x, z, hw, hd }; this._cells(x, z, Math.max(hw, hd), (k) => { if (!this.map.has(k)) this.map.set(k, []); this.map.get(k).push(o); }); return o; }
   // true when a point is inside a building footprint (used by the camera)
   insideBox(x, z, pad = 0.4) {
-    const list = this.map.get(Math.floor(x / this.cell) * 100003 + Math.floor(z / this.cell));
-    if (!list) return false;
-    for (const o of list) if (o.t === 'b' && Math.abs(x - o.x) < o.hw + pad && Math.abs(z - o.z) < o.hd + pad) return true;
-    return false;
+    let hit = false;
+    this._cells(x, z, 3.5, (k) => {
+      if (hit) return;
+      const list = this.map.get(k);
+      if (!list) return;
+      for (const o of list) {
+        if (o.t === 'b' && Math.abs(x - o.x) < o.hw + pad && Math.abs(z - o.z) < o.hd + pad) { hit = true; return; }
+        if (o.tree && Math.hypot(x - o.x, z - o.z) < o.r * 3.2) { hit = true; return; } // inside a tree's leaves
+      }
+    });
+    return hit;
   }
   resolve(p, r) {
     const seen = new Set();
@@ -199,7 +243,7 @@ function buildLights(scene) {
 }
 
 function buildSky(scene) {
-  const geo = new THREE.SphereGeometry(450, 24, 16);
+  const geo = new THREE.SphereGeometry(650, 24, 16);
   W.skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
     uniforms: { top: { value: new THREE.Color() }, horizon: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3() }, sunCol: { value: new THREE.Color() } },
@@ -217,7 +261,7 @@ function buildSky(scene) {
   const pos = [];
   for (let i = 0; i < 900; i++) {
     const th = rnd() * Math.PI * 2, ph = Math.acos(rnd() * 0.9 + 0.1);
-    pos.push(Math.sin(ph) * Math.cos(th) * 420, Math.cos(ph) * 420, Math.sin(ph) * Math.sin(th) * 420);
+    pos.push(Math.sin(ph) * Math.cos(th) * 620, Math.cos(ph) * 620, Math.sin(ph) * Math.sin(th) * 620);
   }
   const sg = new THREE.BufferGeometry();
   sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -245,12 +289,21 @@ function terrainColor(x, z, h, slope, rnd) {
   if (r < 34) c.lerp(new THREE.Color(n > 0.5 ? 0xa89878 : 0x9c8e70), smoothstep(34, 26, r) * 0.55);
   if (slope > 0.55 || h > 22) c.lerp(new THREE.Color(0x868a8c), clamp((slope - 0.5) * 2 + (h - 22) * 0.05, 0, 1));
   if (h > 46) c.lerp(new THREE.Color(0xeef3f6), smoothstep(46, 54, h));
+  // outer regions
+  const rw = (R) => smoothstep(R.r + 10, R.r - 12, Math.hypot(x - R.x, z - R.z));
+  const snow = rw(REG.snow), maples = rw(REG.maples), blossom = rw(REG.blossom), quarry = rw(REG.quarry), high = rw(REG.highlands);
+  if (maples > 0) c.lerp(new THREE.Color(n > 0.55 ? 0xc0743a : n > 0.35 ? 0xa86a34 : 0x7f8a3a), maples * 0.8);
+  if (blossom > 0) c.lerp(new THREE.Color(n > 0.62 ? 0xe8b4c8 : 0x8fbf6a), blossom * 0.75);
+  if (high > 0) c.lerp(new THREE.Color(n > 0.5 ? 0xc8b45e : 0xa8a052), high * 0.75);
+  if (quarry > 0) c.lerp(new THREE.Color(n > 0.5 ? 0xa89c88 : 0x8a7e6c), quarry * 0.85);
+  if (snow > 0) c.lerp(new THREE.Color(n > 0.6 ? 0xc8d4dc : 0xeef3f6), snow * 0.92);
+  if (pd < 3.2 && (snow > 0.3 || quarry > 0.3)) c.lerp(new THREE.Color(snow > 0.3 ? 0xb8b0a0 : 0xb39462), smoothstep(3.2, 1.2, pd) * 0.8);
   c.offsetHSL(0, 0, (rnd() - 0.5) * 0.03);
   return c;
 }
 
 function buildTerrain(scene) {
-  const SIZE = 360, SEG = 150;
+  const SIZE = WORLD_HALF * 2, SEG = 210;
   const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
   geo.rotateX(-Math.PI / 2);
   const p = geo.attributes.position;
@@ -520,36 +573,47 @@ function buildVegetation(scene) {
     if (h < 0.4 + pad * 0.1) return false;
     if (Math.hypot(x, z) < 44) return false;
     if (pathDist(x, z) < 4) return false;
-    if (Math.hypot(x, z) > 175) return false;
+    if (Math.hypot(x, z) > 286) return false;
     for (const s of SHRINES) if (Math.hypot(x - s.x, z - s.z) < 7) return false;
+    for (const k of ['greatMaple', 'frostArch', 'windmill', 'pagoda', 'quarryCrane']) if (Math.hypot(x - PLACES[k].x, z - PLACES[k].z) < 10) return false;
     if (Math.hypot(x - PLACES.bossArena.x, z - PLACES.bossArena.z) < 17) return false;
     if (Math.hypot(x - PLACES.manor.x, z - PLACES.manor.z) < 16) return false;
     if (Math.hypot(x - PLACES.watchtower.x, z - PLACES.watchtower.z) < 9) return false;
     if (Math.hypot(x - PLACES.boathouse.x, z - PLACES.boathouse.z) < 8) return false;
     return true;
   };
-  for (let i = 0; i < 9000 && pines.length + rounds.length < 2100; i++) {
-    const x = (rnd() - 0.5) * 350, z = (rnd() - 0.5) * 350;
+  const rw = (R, x, z) => smoothstep(R.r + 6, R.r - 10, Math.hypot(x - R.x, z - R.z));
+  // each tree remembers its region so it can be colored to match (0 valley, 1 maples, 2 blossom, 3 snow)
+  for (let i = 0; i < 26000 && pines.length + rounds.length < 4200; i++) {
+    const x = (rnd() - 0.5) * 580, z = (rnd() - 0.5) * 580;
     if (!ok(x, z)) continue;
     const forest = smoothstep(75, 30, Math.hypot(x + 90, z + 70));
     const marsh = smoothstep(MARSH.r + 4, MARSH.r - 8, Math.hypot(x - MARSH.x, z - MARSH.z));
-    const mount = smoothstep(150, 165, Math.hypot(x, z));
-    const density = 0.06 + forest * 0.85 + mount * 0.5 - marsh;
+    const mount = smoothstep(262, 278, Math.hypot(x, z));
+    const mp = rw(REG.maples, x, z), bl = rw(REG.blossom, x, z), sn = rw(REG.snow, x, z), qu = rw(REG.quarry, x, z), hi = rw(REG.highlands, x, z);
+    const density = 0.05 + forest * 0.85 + mount * 0.5 + mp * 0.38 + bl * 0.22 + sn * 0.16 - marsh - qu * 0.05 - hi * 0.02;
     if (rnd() > density) continue;
     if (marsh > 0.3) { if (rnd() < 0.3) dead.push([x, z, 0.8 + rnd() * 0.8]); continue; }
     const s = 0.8 + rnd() * 0.9;
-    if (forest > 0.3 || mount > 0.3 || rnd() < 0.4) pines.push([x, z, s]); else rounds.push([x, z, s]);
+    if (sn > 0.4) pines.push([x, z, s, 3]);
+    else if (mp > 0.4) rounds.push([x, z, s * 1.15, 1]);
+    else if (bl > 0.4) rounds.push([x, z, s, 2]);
+    else if (forest > 0.3 || mount > 0.3 || rnd() < 0.4) pines.push([x, z, s, 0]); else rounds.push([x, z, s, 0]);
   }
-  for (let i = 0; i < 520; i++) {
-    const x = (rnd() - 0.5) * 340, z = (rnd() - 0.5) * 340;
+  for (let i = 0; i < 1300; i++) {
+    const x = (rnd() - 0.5) * 570, z = (rnd() - 0.5) * 570;
     if (!ok(x, z)) continue;
-    rocks.push([x, z, 0.5 + rnd() * 1.6]);
+    const qu = rw(REG.quarry, x, z);
+    if (rnd() > 0.45 + qu * 0.55) continue;
+    rocks.push([x, z, 0.5 + rnd() * (1.6 + qu * 1.4)]);
   }
-  for (let i = 0; i < 5000 && grass.length < 2200; i++) {
-    const x = (rnd() - 0.5) * 330, z = (rnd() - 0.5) * 330;
+  for (let i = 0; i < 12000 && grass.length < 4200; i++) {
+    const x = (rnd() - 0.5) * 560, z = (rnd() - 0.5) * 560;
     const h = heightAt(x, z);
-    if (h < 0.6 || pathDist(x, z) < 2.5 || Math.hypot(x, z) < 34 || Math.hypot(x, z) > 160) continue;
-    if (rnd() < 0.15) flowers.push([x, z, rnd()]); else grass.push([x, z, 0.6 + rnd() * 0.7]);
+    if (h < 0.6 || pathDist(x, z) < 2.5 || Math.hypot(x, z) < 34 || Math.hypot(x, z) > 262) continue;
+    if (rw(REG.snow, x, z) > 0.3 || rw(REG.quarry, x, z) > 0.5) continue;
+    const bl = rw(REG.blossom, x, z);
+    if (rnd() < 0.15 + bl * 0.35) flowers.push([x, z, bl > 0.4 && rnd() < 0.7 ? 0.3 : rnd()]); else grass.push([x, z, 0.6 + rnd() * 0.7]);
   }
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sv = new THREE.Vector3(), pv = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   const place = (inst, i, x, y, z, s, sy = s, rot = rnd() * 6.28) => {
@@ -564,23 +628,26 @@ function buildVegetation(scene) {
   const c1 = new THREE.InstancedMesh(cone1, new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9 }), pines.length);
   const c2 = new THREE.InstancedMesh(cone2, new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9 }), pines.length);
   const col = new THREE.Color();
-  pines.forEach(([x, z, s], i) => {
+  pines.forEach(([x, z, s, k], i) => {
     const y = heightAt(x, z) - 0.2, r = rnd() * 6.28;
     place(trunks, i, x, y, z, s, s, r); place(c1, i, x, y, z, s, s * (0.9 + rnd() * 0.3), r); place(c2, i, x, y, z, s, s, r);
     col.setHSL(0.33 + rnd() * 0.06, 0.38, 0.22 + rnd() * 0.08); c1.setColorAt(i, col);
-    col.offsetHSL(0, 0, 0.05); c2.setColorAt(i, col);
-    G.colliders.addCircle(x, z, 0.5 * s);
+    if (k === 3) col.setHSL(0.55, 0.15, 0.88 + rnd() * 0.06); else col.offsetHSL(0, 0, 0.05);
+    c2.setColorAt(i, col);
+    G.colliders.addCircle(x, z, 0.5 * s, true);
   });
   // round trees
   const ballG = new THREE.IcosahedronGeometry(1.8, 0); ballG.translate(0, 3.4, 0);
   const balls = new THREE.InstancedMesh(ballG, new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9 }), rounds.length);
-  rounds.forEach(([x, z, s], i) => {
+  rounds.forEach(([x, z, s, k], i) => {
     const y = heightAt(x, z) - 0.2;
     place(trunks, pines.length + i, x, y, z, s);
     place(balls, i, x, y, z, s, s * (0.9 + rnd() * 0.3));
-    const autumn = rnd() < 0.25;
-    col.setHSL(autumn ? 0.07 + rnd() * 0.05 : 0.24 + rnd() * 0.06, autumn ? 0.6 : 0.45, autumn ? 0.45 : 0.32 + rnd() * 0.08); balls.setColorAt(i, col);
-    G.colliders.addCircle(x, z, 0.5 * s);
+    if (k === 1) col.setHSL(0.01 + rnd() * 0.1, 0.7, 0.42 + rnd() * 0.1);
+    else if (k === 2) col.setHSL(0.92 + rnd() * 0.03, 0.85, 0.7 + rnd() * 0.06);
+    else { const autumn = rnd() < 0.25; col.setHSL(autumn ? 0.07 + rnd() * 0.05 : 0.24 + rnd() * 0.06, autumn ? 0.6 : 0.45, autumn ? 0.45 : 0.32 + rnd() * 0.08); }
+    balls.setColorAt(i, col);
+    G.colliders.addCircle(x, z, 0.5 * s, true);
   });
   for (const m of [trunks, c1, c2, balls]) { m.castShadow = true; m.receiveShadow = true; scene.add(m); }
   // dead marsh trees
@@ -604,7 +671,7 @@ function buildVegetation(scene) {
   scene.add(grassI);
   const flG = new THREE.OctahedronGeometry(0.22, 0); flG.translate(0, 0.45, 0);
   const flI = new THREE.InstancedMesh(flG, new THREE.MeshStandardMaterial({ flatShading: true }), flowers.length);
-  const flCols = [0xf2d16b, 0xf28fb0, 0xffffff, 0xb59cf2, 0xf2865a];
+  const flCols = [0xf2d16b, 0xf28fb0, 0xffffff, 0xb59cf2, 0xf2865a];  // 0.3 picks pink
   flowers.forEach(([x, z, t], i) => { place(flI, i, x, heightAt(x, z), z, 1); flI.setColorAt(i, new THREE.Color(flCols[Math.floor(t * flCols.length)])); });
   scene.add(flI);
 }
@@ -642,6 +709,45 @@ function buildLandmarks(scene) {
   G.colliders.addBox(wt.x, wt.z, 2.2, 2.2);
   addGlow(scene, wt.x, heightAt(wt.x, wt.z) + 11.5, wt.z, 5, '#ffb860', 1);
 
+  // Maplewood: the Great Maple
+  const gm = PLACES.greatMaple, gy = heightAt(gm.x, gm.z);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.8, 10, 7), mat(0x5a3a26)); trunk.position.set(gm.x, gy + 5, gm.z); trunk.castShadow = true; scene.add(trunk);
+  for (const [dx, dy, dz, s, c] of [[0, 12, 0, 5.5, 0xd8542a], [3.5, 10.5, 2, 3.8, 0xe8862e], [-3.5, 10, -1.5, 4, 0xc8401e], [1, 14.5, -2.5, 3.6, 0xf0a83a], [-2, 11, 3.5, 3.2, 0xe06a2a]]) {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), mat(c)); b.position.set(gm.x + dx, gy + dy, gm.z + dz); b.castShadow = true; scene.add(b);
+  }
+  G.colliders.addCircle(gm.x, gm.z, 2);
+  addGlow(scene, gm.x, gy + 9, gm.z, 14, '#ffb050', 0.35);
+  // Frostpeak: an ice-covered stone arch
+  const fa = PLACES.frostArch, fy = heightAt(fa.x, fa.z);
+  const stone = mat(0x9aa4ae), ice = new THREE.MeshStandardMaterial({ color: 0xbfe8ff, emissive: 0x5fb8ff, emissiveIntensity: 0.6, flatShading: true, transparent: true, opacity: 0.85 });
+  for (const sx of [-4, 4]) { const p = new THREE.Mesh(new THREE.BoxGeometry(1.6, 8, 1.6), stone); p.position.set(fa.x + sx, fy + 4, fa.z); p.castShadow = true; scene.add(p); G.colliders.addBox(fa.x + sx, fa.z, 0.9, 0.9); }
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(10.5, 1.4, 1.8), stone); lintel.position.set(fa.x, fy + 8.6, fa.z); scene.add(lintel);
+  for (let i = 0; i < 7; i++) { const cr = new THREE.Mesh(new THREE.ConeGeometry(0.5 + (i % 3) * 0.25, 2.4 + (i % 2), 5), ice); cr.position.set(fa.x - 6 + i * 2, fy + 1, fa.z + 3 + Math.sin(i) * 2); cr.rotation.z = Math.sin(i * 2) * 0.3; scene.add(cr); }
+  addGlow(scene, fa.x, fy + 4, fa.z, 12, '#9fe8ff', 0.4);
+  // Cloudrest: a windmill with turning sails
+  const wm = PLACES.windmill, wy = heightAt(wm.x, wm.z);
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.8, 10, 8), mat(0xe8dcc4)); tower.position.set(wm.x, wy + 5, wm.z); tower.castShadow = true; scene.add(tower);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(2.4, 2.6, 8), mat(0x8a3b3b)); cap.position.set(wm.x, wy + 11.3, wm.z); scene.add(cap);
+  const sails = new THREE.Group(); sails.position.set(wm.x, wy + 9, wm.z + 2.6);
+  for (let i = 0; i < 4; i++) { const blade = new THREE.Mesh(new THREE.BoxGeometry(0.8, 6, 0.12), mat(0xf2ead6)); blade.position.y = 3; const arm = new THREE.Group(); arm.rotation.z = (i * Math.PI) / 2; arm.add(blade); sails.add(arm); }
+  scene.add(sails); W.animated.push({ obj: sails, kind: 'spin' });
+  G.colliders.addCircle(wm.x, wm.z, 2.9);
+  // Blossom Hills: a little pagoda
+  const pg = PLACES.pagoda, py = heightAt(pg.x, pg.z);
+  for (const [sx, sz] of [[-2.2, -2.2], [2.2, -2.2], [-2.2, 2.2], [2.2, 2.2]]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.6, 6), mat(0xa83a3a)); post.position.set(pg.x + sx, py + 1.8, pg.z + sz); scene.add(post); G.colliders.addCircle(pg.x + sx, pg.z + sz, 0.35); }
+  for (const [y, r] of [[3.9, 4.2], [5.5, 3]]) { const roof = new THREE.Mesh(new THREE.ConeGeometry(r, 1.4, 8), mat(0x3a4a5a)); roof.position.set(pg.x, py + y, pg.z); roof.castShadow = true; scene.add(roof); }
+  const pl = lanternMesh(0xff7aa0); pl.position.set(pg.x, py + 2.6, pg.z); scene.add(pl);
+  addGlow(scene, pg.x, py + 2.6, pg.z, 6, '#ff9ab8', 1);
+  // Old Quarry: a wooden crane over stacked blocks
+  const qc = PLACES.quarryCrane, qy = heightAt(qc.x, qc.z);
+  const mast = new THREE.Mesh(new THREE.BoxGeometry(0.7, 9, 0.7), mat(0x6a5038)); mast.position.set(qc.x, qy + 4.5, qc.z); mast.castShadow = true; scene.add(mast);
+  const boom = new THREE.Mesh(new THREE.BoxGeometry(8, 0.5, 0.5), mat(0x6a5038)); boom.position.set(qc.x + 3, qy + 8.6, qc.z); boom.rotation.z = -0.15; scene.add(boom);
+  const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 5, 4), mat(0x3a2a1c)); rope.position.set(qc.x + 6.5, qy + 5.6, qc.z); scene.add(rope);
+  const hang = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.2), mat(0x9a9080)); hang.position.set(qc.x + 6.5, qy + 2.6, qc.z); scene.add(hang);
+  G.colliders.addCircle(qc.x, qc.z, 0.8);
+  for (let i = 0; i < 6; i++) { const blk = new THREE.Mesh(new THREE.BoxGeometry(2, 1.4, 1.4), mat(0xa89c88)); blk.position.set(qc.x - 4 + (i % 3) * 2.1, qy + 0.7 + Math.floor(i / 3) * 1.4, qc.z + 4); blk.castShadow = true; scene.add(blk); }
+  G.colliders.addBox(qc.x - 1.9, qc.z + 4, 3.2, 0.8);
+
   // marsh boss arena: ring of standing stones
   const ba = PLACES.bossArena;
   for (let i = 0; i < 10; i++) {
@@ -673,12 +779,12 @@ function buildSkyLanterns(scene) {
 }
 
 function buildFireflies(scene) {
-  const n = 260, rnd = seeded(31);
+  const n = 360, rnd = seeded(31);
   W.flies = [];
   for (let i = 0; i < n; i++) {
     const zone = rnd();
     let cx, cz, rr;
-    if (zone < 0.45) { cx = -85; cz = -65; rr = 55; } else if (zone < 0.8) { cx = MARSH.x; cz = MARSH.z; rr = 40; } else { cx = -20; cz = 60; rr = 50; }
+    if (zone < 0.35) { cx = -85; cz = -65; rr = 55; } else if (zone < 0.6) { cx = MARSH.x; cz = MARSH.z; rr = 40; } else if (zone < 0.75) { cx = -20; cz = 60; rr = 50; } else if (zone < 0.88) { cx = REG.maples.x; cz = REG.maples.z; rr = 55; } else { cx = REG.blossom.x; cz = REG.blossom.z; rr = 55; }
     const a = rnd() * 6.28, d = Math.sqrt(rnd()) * rr;
     W.flies.push({ x: cx + Math.cos(a) * d, z: cz + Math.sin(a) * d, ph: rnd() * 10 });
   }
@@ -740,12 +846,12 @@ export function updateWorld(dt, elapsed) {
   W.hemi.intensity = 0.45 + sunI * 0.35 + night * 0.4;
   W.hemi.color.copy(hor).lerp(new THREE.Color(0xbfd8ff), 0.5);
   W.hemi.groundColor.setHex(night > 0.5 ? 0x1a2030 : 0x3a4a2a);
-  G.scene.fog.near = 50 + (1 - night) * 30; G.scene.fog.far = 220 + (1 - night) * 80;
+  G.scene.fog.near = 60 + (1 - night) * 40; G.scene.fog.far = 240 + (1 - night) * 110;
   W.sky.position.set(G.camera.position.x, 0, G.camera.position.z);
   W.stars.position.copy(W.sky.position);
   W.starMat.opacity = night * 0.9;
   const md = new THREE.Vector3(-Math.cos(ang), -Math.sin(ang), -0.3).normalize();
-  W.moon.position.set(G.camera.position.x + md.x * 380, md.y * 380, G.camera.position.z + md.z * 380);
+  W.moon.position.set(G.camera.position.x + md.x * 560, md.y * 560, G.camera.position.z + md.z * 560);
   W.moon.material.opacity = clamp(md.y * 3, 0, 1);
   // night lights
   const glowK = clamp(night * 1.1 + 0.15, 0, 1);
@@ -778,7 +884,7 @@ export function updateWorld(dt, elapsed) {
   });
   fp.needsUpdate = true;
   W.flyPts.material.opacity = night * (0.7 + Math.sin(elapsed * 2) * 0.3);
-  for (const a of W.animated) if (a.kind === 'bob') { a.obj.position.y = 0.2 + Math.sin(elapsed * 1.2 + a.ph) * 0.12; a.obj.rotation.z = Math.sin(elapsed + a.ph) * 0.05; }
+  for (const a of W.animated) if (a.kind === 'spin') a.obj.rotation.z += dt * 0.6; else if (a.kind === 'bob') { a.obj.position.y = 0.2 + Math.sin(elapsed * 1.2 + a.ph) * 0.12; a.obj.rotation.z = Math.sin(elapsed + a.ph) * 0.05; }
   if (G.save && G.save.world.bossDefeated) { W.greatLanternMat.emissiveIntensity = 1.6; W.greatGlow.material.opacity = 0.9 + Math.sin(elapsed * 2) * 0.1; }
   else W.greatLanternMat.emissiveIntensity = 0.15 + (G.save ? G.save.world.shrines.length * 0.2 : 0);
 }

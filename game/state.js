@@ -28,7 +28,7 @@ export const G = {
   interactables: [],  // {id, x, z, r, label, action, active()}
   colliders: null,
 
-  settings: { volume: 0.6, music: 0.5, sensitivity: 1, quality: 'high' },
+  settings: { volume: 0.6, music: 0.5, sensitivity: 1, quality: 'high', controls: 'steer', seenControls: false },
 
   // Persistent progress (saved)
   save: null,

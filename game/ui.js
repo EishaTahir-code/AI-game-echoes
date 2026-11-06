@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { G } from './state.js';
 import { QUESTS, NPCS, DEEDS, SHARDS, BOND_PERKS, VISTAS, HERBS } from './data.js';
-import { SHRINES, PLACES, ZONES, heightAt, pathDist, LAKE, MARSH, lakeE, isNight } from './world.js';
+import { SHRINES, PLACES, ZONES, REG, WORLD_HALF, heightAt, pathDist, LAKE, MARSH, lakeE, isNight } from './world.js';
 import { RARITY, CONSUMABLES, INV_SIZE, tooltipHTML, iconFor, colorFor, itemName, equip, unequip, removeById, makeStack, addItem, countItem, removeItem, makeGear, randomLoot, itemStats, statLine } from './items.js';
 import { S, xpToNext, bondNeed, claimBounty, grantBond, npcState } from './story.js';
 import { SKILLS } from './player.js';
@@ -29,6 +29,7 @@ export function initUI() {
   };
   // skill bar
   E.skills.innerHTML = SKILLS.map((s, i) => `<div class="skill" data-i="${i}"><span class="skey">${s.key}</span><span class="sname">${s.name}</span><div class="cd"></div><div class="lock"></div></div>`).join('')
+    + `<div class="skill help"><span class="skey">H</span><span class="sname">Controls</span></div>`
     + `<div class="skill tonic"><span class="skey">Q</span><span class="sname">Tonic</span><span class="count" id="tonic-count">0</span></div>`;
   E.skillEls = [...E.skills.querySelectorAll('.skill[data-i]')];
   E.skillEls.forEach((el, i) => { el.title = `${SKILLS[i].name}: ${SKILLS[i].desc} Costs ${SKILLS[i].cost} spirit.`; });
@@ -215,6 +216,7 @@ export function togglePanel(tab) { if (isPanelOpen() && panelTab === tab) closeP
 
 function showTab(tab) {
   panelTab = tab;
+  E.panel.querySelector('.panel-card').classList.toggle('wide', tab === 'map');
   const contextual = { shop: 'Driftwood Inn', forge: 'Hild\'s forge', board: 'Notice board' };
   const tabs = [['character', 'Character'], ['journal', 'Journal'], ['map', 'Map'], ['settings', 'Settings']];
   if (contextual[tab]) tabs.unshift([tab, contextual[tab]]);
@@ -347,15 +349,15 @@ function renderJournal() {
 }
 
 // ---------------------------------------------------------------- map
-const MAP_PX = 240, WORLD = 360;
+const MAP_PX = 400, WORLD = WORLD_HALF * 2, HALF = WORLD_HALF;
 let mapImg = null;
-const FOG_N = 48;
+const FOG_N = 72;
 function initMapImage() {
   const c = document.createElement('canvas'); c.width = c.height = MAP_PX;
   const g = c.getContext('2d'), img = g.createImageData(MAP_PX, MAP_PX);
   const k = WORLD / MAP_PX;
   for (let j = 0; j < MAP_PX; j++) for (let i = 0; i < MAP_PX; i++) {
-    const x = -180 + i * k, z = -180 + j * k;
+    const x = -HALF + i * k, z = -HALF + j * k;
     const h = heightAt(x, z), hx = heightAt(x + k, z), hz = heightAt(x, z + k);
     const shade = clamp(1 + ((h - hx) + (h - hz)) * 0.18, 0.6, 1.35);
     let r, gg, b;
@@ -366,7 +368,10 @@ function initMapImage() {
       const marsh = Math.hypot(x - MARSH.x, z - MARSH.z) < MARSH.r;
       r = 110 - forest * 40; gg = 140 - forest * 30; b = 80 - forest * 20;
       if (marsh) { r = 92; gg = 100; b = 64; }
-      if (h > 22) { r = 135; gg = 135; b = 135; }
+      const inR = (R, pad = 0) => Math.hypot(x - R.x, z - R.z) < R.r + pad;
+      const tint = (R, cr, cg, cb) => { const w = clamp((R.r + 10 - Math.hypot(x - R.x, z - R.z)) / 20, 0, 1); r += (cr - r) * w; gg += (cg - gg) * w; b += (cb - b) * w; };
+      tint(REG.maples, 176, 104, 56); tint(REG.blossom, 196, 160, 170); tint(REG.highlands, 184, 168, 92); tint(REG.quarry, 150, 140, 122); tint(REG.snow, 226, 234, 240);
+      if (h > 22 && !inR(REG.snow, 10)) { r = 135; gg = 135; b = 135; }
       if (h > 46) { r = 230; gg = 235; b = 238; }
       if (pathDist(x, z) < 2.4) { r = 186; gg = 160; b = 112; }
       if (Math.hypot(x, z) < 32) { r = 170; gg = 155; b = 125; }
@@ -387,15 +392,15 @@ function revealFog() {
   const p = G.player.pos, cell = WORLD / FOG_N;
   let f = fogArr().split('');
   let changed = false;
-  const ci = Math.floor((p.x + 180) / cell), cj = Math.floor((p.z + 180) / cell);
-  for (let j = cj - 4; j <= cj + 4; j++) for (let i = ci - 4; i <= ci + 4; i++) {
+  const ci = Math.floor((p.x + HALF) / cell), cj = Math.floor((p.z + HALF) / cell);
+  for (let j = cj - 6; j <= cj + 6; j++) for (let i = ci - 6; i <= ci + 6; i++) {
     if (i < 0 || j < 0 || i >= FOG_N || j >= FOG_N) continue;
-    const cx = -180 + (i + 0.5) * cell, cz = -180 + (j + 0.5) * cell;
-    if (Math.hypot(cx - p.x, cz - p.z) < 34 && f[j * FOG_N + i] === '0') { f[j * FOG_N + i] = '1'; changed = true; }
+    const cx = -HALF + (i + 0.5) * cell, cz = -HALF + (j + 0.5) * cell;
+    if (Math.hypot(cx - p.x, cz - p.z) < 40 && f[j * FOG_N + i] === '0') { f[j * FOG_N + i] = '1'; changed = true; }
   }
   if (changed) G.save.world.fog = f.join('');
 }
-const w2m = (x, size) => ((x + 180) / WORLD) * size;
+const w2m = (x, size) => ((x + HALF) / WORLD) * size;
 
 function drawMarkers(g, size, opts = {}) {
   const s = (x) => w2m(x, size);
@@ -421,7 +426,7 @@ function drawMarkers(g, size, opts = {}) {
   g.beginPath(); g.moveTo(0, -8 * sc); g.lineTo(5.5 * sc, 6 * sc); g.lineTo(0, 3 * sc); g.lineTo(-5.5 * sc, 6 * sc); g.closePath();
   g.fillStyle = '#ffffff'; g.fill(); g.strokeStyle = '#1e2a44'; g.lineWidth = 2; g.stroke(); g.restore();
 }
-function fogAt(x, z) { const cell = WORLD / FOG_N; const i = Math.floor((x + 180) / cell), j = Math.floor((z + 180) / cell); return fogArr()[j * FOG_N + i] === '1'; }
+function fogAt(x, z) { const cell = WORLD / FOG_N; const i = Math.floor((x + HALF) / cell), j = Math.floor((z + HALF) / cell); return fogArr()[j * FOG_N + i] === '1'; }
 let fogCanvas = null, fogKey = '';
 function drawFog(g, size) {
   const f = fogArr();
@@ -442,28 +447,29 @@ let travelFn = null;
 export function setTravel(fn) { travelFn = fn; }
 
 function renderMap() {
-  E.panelBody.innerHTML = `<div class="mapwrap"><canvas id="bigmap" width="720" height="720" aria-label="Map of the valley"></canvas>
+  const MS = 1000;
+  E.panelBody.innerHTML = `<div class="mapwrap"><canvas id="bigmap" width="${MS}" height="${MS}" aria-label="Map of the valley"></canvas>
     <aside class="legend"><h3>The valley</h3><p class="muted">Lit shrines glow amber. Click one to travel there. Dark areas are still unexplored.</p>
     <ul><li><i class="lg sh"></i>Lantern shrine</li><li><i class="lg q"></i>Quest goal</li><li><i class="lg npc"></i>Townsfolk</li><li><i class="lg rift"></i>Echo Rift</li></ul>
     <div id="map-hover" class="muted"></div></aside></div>`;
   const cv = $('bigmap'), g = cv.getContext('2d');
   const draw = () => {
     g.imageSmoothingEnabled = true;
-    g.drawImage(mapImg, 0, 0, 720, 720);
-    drawFog(g, 720);
-    g.font = 'italic 600 15px Fraunces, Georgia, serif'; g.textAlign = 'center';
+    g.drawImage(mapImg, 0, 0, MS, MS);
+    drawFog(g, MS);
+    g.font = 'italic 600 20px Fraunces, Georgia, serif'; g.textAlign = 'center';
     for (const zn of ZONES) {
       if (zn.id === 'wilds' || !G.save.world.zones.includes(zn.id)) continue;
       g.fillStyle = 'rgba(246,235,211,0.9)'; g.strokeStyle = 'rgba(30,42,68,0.8)'; g.lineWidth = 3;
-      g.strokeText(zn.name, w2m(zn.x, 720), w2m(zn.z, 720) - 14); g.fillText(zn.name, w2m(zn.x, 720), w2m(zn.z, 720) - 14);
+      g.strokeText(zn.name, w2m(zn.x, MS), w2m(zn.z, MS) - 16); g.fillText(zn.name, w2m(zn.x, MS), w2m(zn.z, MS) - 16);
     }
-    drawMarkers(g, 720, { scale: 1.6, rifts: mapRiftsFn() });
+    drawMarkers(g, MS, { scale: 2, rifts: mapRiftsFn() });
   };
   draw();
   const pick = (e) => {
     const r = cv.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * WORLD - 180, z = ((e.clientY - r.top) / r.height) * WORLD - 180;
-    return SHRINES.find((s) => Math.hypot(s.x - x, s.z - z) < 7 && G.save.world.shrines.includes(s.id));
+    const x = ((e.clientX - r.left) / r.width) * WORLD - HALF, z = ((e.clientY - r.top) / r.height) * WORLD - HALF;
+    return SHRINES.find((s) => Math.hypot(s.x - x, s.z - z) < 9 && G.save.world.shrines.includes(s.id));
   };
   cv.addEventListener('mousemove', (e) => { const s = pick(e); cv.style.cursor = s ? 'pointer' : 'default'; $('map-hover').textContent = s ? `Travel to ${s.name}` : ''; });
   cv.addEventListener('click', (e) => { const s = pick(e); if (s && travelFn) { closePanel(); travelFn(s.id); } });
@@ -540,6 +546,27 @@ function renderBoard() {
 }
 export function openGift(npc) { giftChooser(npc); }
 
+export function controlsList() {
+  const steer = G.settings.controls !== 'mouse';
+  const move = steer
+    ? [['W / ↑', 'Walk forward'], ['S / ↓', 'Walk backward'], ['A D / ← →', 'Turn left and right (the camera turns with you)'], ['Right-drag', 'Glance around (optional)']]
+    : [['W A S D', 'Move'], ['Mouse', 'Look around (click the game first)']];
+  return [...move, ['Shift', 'Sprint'], ['Left click', 'Attack (aims at the nearest hollow)'], ['Space', 'Dodge roll'], ['1 2 3 4', 'Skills'],
+    ['Q', 'Drink a Lantern Tonic'], ['E', 'Talk, open, pick up'], ['F', 'Pet your fox'], ['C  J  M', 'Character, journal, map'], ['H', 'Show these controls'], ['Esc', 'Menus and settings']];
+}
+const keysHTML = () => controlsList().map(([k, d]) => `<dt>${esc(k)}</dt><dd>${esc(d)}</dd>`).join('');
+
+export function toggleControls(force) {
+  const el = $('controls-card');
+  const show = force ?? el.hidden;
+  if (!show) { el.hidden = true; G.settings.seenControls = true; settingsHandlers.change?.('seenControls'); return; }
+  el.innerHTML = `<div class="cc-inner"><h2>Controls</h2>${G.settings.controls !== 'mouse' ? '<p class="muted">No mouse needed to move: the camera turns when you turn.</p>' : ''}<dl class="keys">${keysHTML()}</dl>
+    <p class="muted small">You can switch between steering and mouse-look in Settings (Esc).</p><button class="btn primary" id="cc-ok">Got it</button></div>`;
+  el.hidden = false;
+  $('cc-ok').addEventListener('click', () => toggleControls(false));
+}
+export const controlsOpen = () => !$('controls-card').hidden;
+
 let settingsHandlers = {};
 export function setSettingsHandlers(h) { settingsHandlers = h; }
 function renderSettings() {
@@ -547,18 +574,16 @@ function renderSettings() {
   E.panelBody.innerHTML = `<div class="settings"><section><h3>Settings</h3>
     <label>Sound volume <input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-set="volume"></label>
     <label>Music volume <input type="range" min="0" max="1" step="0.05" value="${s.music}" data-set="music"></label>
+    <label>Controls <select data-set="controls"><option value="steer" ${s.controls !== 'mouse' ? 'selected' : ''}>Steering: A/D turn you and the camera</option><option value="mouse" ${s.controls === 'mouse' ? 'selected' : ''}>Mouse look: the mouse turns the camera</option></select></label>
     <label>Mouse sensitivity <input type="range" min="0.3" max="2.5" step="0.1" value="${s.sensitivity}" data-set="sensitivity"></label>
     <label>Graphics <select data-set="quality"><option value="high" ${s.quality === 'high' ? 'selected' : ''}>High</option><option value="medium" ${s.quality === 'medium' ? 'selected' : ''}>Medium</option><option value="low" ${s.quality === 'low' ? 'selected' : ''}>Low (no shadows)</option></select></label>
     <div class="btnrow"><button class="btn" id="save-now">Save now</button><button class="btn" id="to-title">Save and quit to title</button></div>
     <p class="muted small">Your game saves itself every 20 seconds and whenever something important happens.</p></section>
-    <section><h3>Controls</h3><dl class="keys">
-    <dt>W A S D</dt><dd>Move</dd><dt>Shift</dt><dd>Sprint</dd><dt>Mouse</dt><dd>Look around (click the game first)</dd>
-    <dt>Left click</dt><dd>Attack, click again to combo</dd><dt>Space</dt><dd>Dodge roll</dd><dt>1 2 3 4</dt><dd>Skills</dd>
-    <dt>Q</dt><dd>Drink a Lantern Tonic</dd><dt>E</dt><dd>Talk, open, pick up</dd><dt>F</dt><dd>Pet your fox</dd>
-    <dt>C</dt><dd>Character and bag</dd><dt>J</dt><dd>Journal</dd><dt>M</dt><dd>Map</dd><dt>Esc</dt><dd>Close menus</dd></dl></section></div>`;
+    <section><h3>Controls</h3><dl class="keys" id="keys-list">${keysHTML()}</dl></section></div>`;
   E.panelBody.querySelectorAll('[data-set]').forEach((el) => el.addEventListener('input', () => {
-    const k = el.dataset.set; s[k] = k === 'quality' ? el.value : parseFloat(el.value);
+    const k = el.dataset.set; s[k] = k === 'quality' || k === 'controls' ? el.value : parseFloat(el.value);
     Audio.applyVolume(); settingsHandlers.change?.(k);
+    if (k === 'controls') $('keys-list').innerHTML = keysHTML();
   }));
   $('save-now').addEventListener('click', () => { S.save(); toast('Game saved.', 'info'); });
   $('to-title').addEventListener('click', () => { closePanel(); settingsHandlers.quit?.(); });
@@ -606,7 +631,7 @@ function updateTracker() {
   if (f.joined && f.bondLevel < 10) { const perk = BOND_PERKS.find((x) => x.lvl > f.bondLevel); goals.push(`Bond ${f.bondLevel + 1} with ${f.name} in ${bondNeed(f.bondLevel) - f.bond}${perk && perk.lvl === f.bondLevel + 1 ? `: ${perk.text}` : ''}`); }
   const ready = G.save.bounties.list.filter((b) => b.done && !b.claimed).length;
   if (ready) goals.push(`${ready} bounty reward${ready > 1 ? 's' : ''} at the notice board`);
-  else if (G.save.world.shrines.length < 6 && f.joined) goals.push(`Shrines lit: ${G.save.world.shrines.length} of 6`);
+  else if (G.save.world.shrines.length < SHRINES.length && f.joined) goals.push(`Shrines lit: ${G.save.world.shrines.length} of ${SHRINES.length}`);
   E.goals.innerHTML = goals.slice(0, 3).map((g) => `<li>${esc(g)}</li>`).join('');
 }
 
@@ -634,8 +659,8 @@ function updateWaypoint() {
 let miniCtx = null;
 function drawMinimap() {
   if (!miniCtx) { const c = $('minimap'); miniCtx = c.getContext('2d'); }
-  const g = miniCtx, S2 = 180, p = G.player.pos;
-  const view = 110; // world units across
+  const g = miniCtx, S2 = 240, p = G.player.pos;
+  const view = 150; // world units across
   const scale = S2 / view;
   g.save();
   g.clearRect(0, 0, S2, S2);
@@ -679,7 +704,7 @@ export function updateHUD(dt) {
     el.classList.toggle('cooling', cd > 0);
   }
   E.tonic.textContent = countItem('tonic');
-  E.lockHint.hidden = G.paused || G.inDialogue || document.pointerLockElement != null || !pl.alive;
+  E.lockHint.hidden = G.settings.controls !== 'mouse' || G.paused || G.inDialogue || document.pointerLockElement != null || !pl.alive;
   trackTimer -= dt;
   if (trackerDirty || trackTimer <= 0) { trackerDirty = false; trackTimer = 0.5; updateTracker(); }
   fogTimer -= dt; if (fogTimer <= 0) { fogTimer = 0.4; revealFog(); }
