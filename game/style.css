@@ -210,7 +210,7 @@ body.talking #hud > :not(#toasts):not(#banner):not(#fox-says):not(#lootfeed):not
 .mini-heart { width: 11px; height: 10px; display: inline-block; background: var(--camellia); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 21S1 14 1 7a5.5 5.5 0 0111-1 5.5 5.5 0 0111 1c0 7-11 14-11 14z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 21S1 14 1 7a5.5 5.5 0 0111-1 5.5 5.5 0 0111 1c0 7-11 14-11 14z'/%3E%3C/svg%3E") center / contain no-repeat; }
 
 /* menus */
-#panel { position: fixed; inset: 0; display: none; place-items: center; z-index: 25; background: rgba(12, 18, 32, 0.55); }
+#panel { position: fixed; inset: 0; display: none; place-items: center; z-index: 31; background: rgba(12, 18, 32, 0.55); }
 #panel.open { display: grid; }
 .panel-card { width: min(1080px, 94vw); height: min(720px, 90vh); display: flex; flex-direction: column; background: rgba(30, 42, 68, 0.96); }
 .panel-card header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 0; }
@@ -343,3 +343,27 @@ body.talking #hud > :not(#toasts):not(#banner):not(#fox-says):not(#lootfeed):not
 #controls-card .keys dt { white-space: nowrap; }
 .skill.help { box-shadow: 0 0 0 1px rgba(246, 235, 211, 0.25); width: 56px; }
 .skill.help .skey { color: var(--washi); }
+
+/* guide */
+.btn.big.ghost { background: transparent; border-style: dashed; }
+.guide { display: grid; grid-template-columns: 230px 1fr; gap: 24px; height: 100%; min-height: 0; }
+.guide-nav { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.guide-nav input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(246, 235, 211, 0.2); background: rgba(0, 0, 0, 0.25); color: var(--washi); font: inherit; }
+.guide-nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; overflow: auto; }
+.guide-nav button { width: 100%; text-align: left; background: none; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; color: var(--mist); font-size: 15px; border-left: 3px solid transparent; }
+.guide-nav button:hover { background: rgba(255, 255, 255, 0.05); color: var(--washi); }
+.guide-nav button.on { background: rgba(255, 181, 71, 0.1); color: var(--washi); border-left-color: var(--amber); font-weight: 700; }
+.guide-body { overflow: auto; padding-right: 10px; max-width: 72ch; font-size: 15px; line-height: 1.6; }
+#panel-body .guide-body h3 { font: 600 24px var(--display); margin: 0 0 8px; }
+#panel-body .guide-body h4 { font: 600 17px var(--display); margin: 20px 0 6px; color: var(--amber); }
+.guide-body .lead { font: 400 17px/1.55 var(--display); margin: 0 0 12px; }
+.guide-body ol, .guide-body ul { padding-left: 22px; margin: 6px 0; }
+.guide-body li { margin: 5px 0; }
+.guide-body table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 14px; }
+.guide-body th { text-align: left; color: var(--mist); font-weight: 400; padding: 6px 10px 6px 0; border-bottom: 1px solid rgba(246, 235, 211, 0.15); }
+.guide-body td { padding: 6px 10px 6px 0; border-bottom: 1px solid rgba(246, 235, 211, 0.07); vertical-align: top; }
+.guide-body kbd { margin: 0 2px; }
+#panel-body:has(.guide) { overflow: hidden; }
+.toast.tip { border-left-color: #9fe8ff; background: rgba(30, 52, 78, 0.92); }
+.toast.tip::before { content: 'Tip'; display: block; font-size: 11px; color: #9fe8ff; font-weight: 700; margin-bottom: 2px; }
+.guide-body td.nw { white-space: nowrap; }

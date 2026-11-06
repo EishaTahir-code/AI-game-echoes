@@ -339,6 +339,7 @@ export class Player {
     Audio.sfx('hurt');
     if (from) { const dx = this.pos.x - from.x, dz = this.pos.z - from.z, d = Math.hypot(dx, dz) || 1; this.move(dx / d * 18, dz / d * 18, 0.05); }
     if (this.hp <= 0) this.die();
+    else if (this.hp < this.stats.maxHp * 0.4) UI.tip('lowhp', 'Your health is low. Press Q to drink a Lantern Tonic, or get away from the fight and your health will come back.');
   }
 
   die() {

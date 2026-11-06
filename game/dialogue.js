@@ -5,6 +5,7 @@ import { S, giveGift, npcState } from './story.js';
 import { releaseLock, input } from './input.js';
 import { countItem, CONSUMABLES } from './items.js';
 import * as Audio from './audio.js';
+import { tip } from './ui.js';
 
 const D = { open: false, npc: null, node: null, full: '', shown: 0, choices: [], handoff: false, onClose: null };
 let el;
@@ -100,6 +101,7 @@ function renderChoices(visible) {
   el.choices.innerHTML = '';
   if (!visible) return;
   if (!D.choices.length) { el.next.hidden = false; return; }
+  if (D.choices.some((c) => c.hint && c.hint.includes('♥'))) tip('hearts', 'Answers with a heart change how this person feels about you. People remember what you say, and gossip spreads overnight.');
   D.choices.forEach((c, i) => {
     const b = document.createElement('button');
     b.className = 'choice';

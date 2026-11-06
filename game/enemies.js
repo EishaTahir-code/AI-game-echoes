@@ -250,6 +250,7 @@ export class Enemy {
     if (this.attack === 'charge') { this.facing = Math.atan2(pl.pos.x - this.pos.x, pl.pos.z - this.pos.z); }
   }
   addTele(r, x, z) {
+    UI.tip('circles', 'Red circle on the ground: a heavy hit lands there when it fills. Step out of it or roll with Space.');
     if (this.telegraph) G.scene.remove(this.telegraph);
     this.telegraph = makeTelegraph(r);
     this.telegraph.position.set(x, groundY(x, z) + 0.08, z);
@@ -441,7 +442,9 @@ export function updateEnemies(dt) {
     }
   }
   // the music knows when you're fighting
-  Audio.setCombat(G.enemies.some((e) => e.alive && (e.state === 'chase' || e.state === 'windup') && Math.hypot(e.pos.x - pl.pos.x, e.pos.z - pl.pos.z) < 22) ? 1 : 0);
+  const fighting = G.enemies.some((e) => e.alive && (e.state === 'chase' || e.state === 'windup') && Math.hypot(e.pos.x - pl.pos.x, e.pos.z - pl.pos.z) < 22);
+  Audio.setCombat(fighting ? 1 : 0);
+  if (fighting) UI.tip('fight', 'A hollow is coming! Left click to attack; click quickly for a combo. Press Space to roll out of the way. Press G for the full guide.');
 }
 
 export function resetEnemiesNearPlayer() {

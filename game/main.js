@@ -77,6 +77,7 @@ function showTitle() {
     const s = loadSave();
     cont.querySelector('small').textContent = s ? `Level ${s.player.level}, day ${s.day}${s.fox.joined ? `, with ${s.fox.name}` : ''}` : '';
   }
+  document.getElementById('btn-guide').onclick = () => UI.openGuide('rules');
   document.getElementById('btn-new').onclick = () => {
     if (saved && !confirm('Start a new journey? Your current progress will be replaced.')) return;
     deleteSave();
@@ -94,6 +95,7 @@ function startGame(save, isNew) {
   G.player = new Player();
   G.fox = new Fox();
   initEnemies();
+  if (UI.isPanelOpen()) UI.closePanel();
   titleEl.classList.remove('open');
   document.body.classList.add('playing');
   G.started = true;
@@ -150,7 +152,9 @@ function loop() {
     G.camera.lookAt(80, 6, 0);
     updateWorld(dt, elapsed);
     updateWater(elapsed);
+    if (hit('Escape') && UI.isPanelOpen()) UI.closePanel();
     renderer.render(G.scene, G.camera);
+    endFrame();
     return;
   }
 
@@ -160,6 +164,7 @@ function loop() {
     if (hit('j')) UI.togglePanel('journal');
     if (hit('m')) UI.togglePanel('map');
     if (hit('h')) UI.toggleControls();
+    if (hit('g') && !UI.controlsOpen()) UI.togglePanel('guide');
     if (UI.controlsOpen() && (hit('Escape') || hit('Enter'))) UI.toggleControls(false);
     if (hit('Escape') && !UI.controlsOpen()) { if (UI.isPanelOpen()) UI.closePanel(); else UI.openPanel('settings'); }
   }

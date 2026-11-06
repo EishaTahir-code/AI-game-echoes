@@ -58,6 +58,7 @@ export function freshSave() {
     },
     bounties: { day: 0, list: [] },
     deeds: {},
+    tips: [],
     stats: { kills: 0, chests: 0, deaths: 0, playSeconds: 0, legendaries: 0, gifts: 0 },
     time: 0.72, day: 1,
     shopDay: 0, shop: [],

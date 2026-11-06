@@ -170,6 +170,7 @@ export function giveStack(key, n = 1) {
 export function giveItem(it) {
   if (!addItem(it)) { UI.toast('Your bag is full. Sell or drop something.', 'warn'); return false; }
   if (it.rarity >= 4) { G.save.stats.legendaries++; Audio.sfx('legendary'); }
+  if (it.kind === 'gear') UI.tip('gear', 'You found new gear! Press C to open your bag. Hover an item to compare it, and double-click to wear it.');
   UI.lootFeed(it);
   bus.emit('itemsChanged');
   return true;

@@ -33,10 +33,13 @@ No mouse needed to move: when you turn, the camera turns with you. Press **H** i
 | E | Talk, open, pick up |
 | F | Pet your fox |
 | C, J, M | Character and bag, journal, map |
+| G | Game guide and rules |
 | H | Show the controls |
 | Esc | Menus and settings |
 
 Prefer mouse-look? Switch **Controls** to "Mouse look" in Settings (Esc).
+
+New players can open **How to play** on the title screen, or press **G** in the game, for the rules and a full guide: fighting, the fox, friendships, quests, gear and exploring. Short tips also pop up the first time something new happens.
 
 ## What's in it
 

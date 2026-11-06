@@ -10,6 +10,7 @@ import { sayLine, giftChooser, closeDialogue, handoff } from './dialogue.js';
 import { releaseLock } from './input.js';
 import { fmtTime, clamp, bus } from './util.js';
 import * as Audio from './audio.js';
+import { renderGuide, openGuideAt } from './guide.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -29,6 +30,7 @@ export function initUI() {
   };
   // skill bar
   E.skills.innerHTML = SKILLS.map((s, i) => `<div class="skill" data-i="${i}"><span class="skey">${s.key}</span><span class="sname">${s.name}</span><div class="cd"></div><div class="lock"></div></div>`).join('')
+    + `<div class="skill help"><span class="skey">G</span><span class="sname">Guide</span></div>`
     + `<div class="skill help"><span class="skey">H</span><span class="sname">Controls</span></div>`
     + `<div class="skill tonic"><span class="skey">Q</span><span class="sname">Tonic</span><span class="count" id="tonic-count">0</span></div>`;
   E.skillEls = [...E.skills.querySelectorAll('.skill[data-i]')];
@@ -46,15 +48,23 @@ export function initUI() {
 }
 
 // ---------------------------------------------------------------- notifications
-export function toast(text, kind = 'info') {
+export function toast(text, kind = 'info', ms = 4200) {
   if (!E.toasts) return;
   const d = document.createElement('div');
   d.className = `toast ${kind}`;
   d.textContent = text;
   E.toasts.appendChild(d);
   while (E.toasts.children.length > 4) E.toasts.firstChild.remove();
-  setTimeout(() => d.classList.add('out'), 4200);
-  setTimeout(() => d.remove(), 4800);
+  setTimeout(() => d.classList.add('out'), ms);
+  setTimeout(() => d.remove(), ms + 600);
+}
+// A tip shows once per save, the first time something happens.
+export function tip(id, text) {
+  if (!G.save || !G.started) return;
+  const seen = (G.save.tips ||= []);
+  if (seen.includes(id)) return;
+  seen.push(id);
+  toast(text, 'tip', 9000);
 }
 let bannerQ = [], bannerBusy = false;
 export function questBanner(kicker, title) {
@@ -213,16 +223,18 @@ export function closePanel() {
   S.save();
 }
 export function togglePanel(tab) { if (isPanelOpen() && panelTab === tab) closePanel(); else openPanel(tab); }
+export function openGuide(section) { if (section) openGuideAt(section); openPanel('guide'); }
 
 function showTab(tab) {
   panelTab = tab;
   E.panel.querySelector('.panel-card').classList.toggle('wide', tab === 'map');
   const contextual = { shop: 'Driftwood Inn', forge: 'Hild\'s forge', board: 'Notice board' };
-  const tabs = [['character', 'Character'], ['journal', 'Journal'], ['map', 'Map'], ['settings', 'Settings']];
+  let tabs = [['character', 'Character'], ['journal', 'Journal'], ['map', 'Map'], ['guide', 'Guide'], ['settings', 'Settings']];
   if (contextual[tab]) tabs.unshift([tab, contextual[tab]]);
+  if (!G.started) tabs = [['guide', 'How to play']];
   E.tabs.innerHTML = tabs.map(([id, n]) => `<button data-tab="${id}" class="${id === tab ? 'on' : ''}">${n}</button>`).join('');
   E.tooltip.hidden = true;
-  ({ character: renderCharacter, journal: renderJournal, map: renderMap, shop: renderShop, forge: renderForge, board: renderBoard, settings: renderSettings })[tab]();
+  ({ character: renderCharacter, journal: renderJournal, map: renderMap, shop: renderShop, forge: renderForge, board: renderBoard, settings: renderSettings, guide: () => renderGuide(E.panelBody) })[tab]();
 }
 export function refreshPanel() { if (isPanelOpen() && panelTab) showTab(panelTab); }
 
@@ -552,7 +564,7 @@ export function controlsList() {
     ? [['W / ↑', 'Walk forward'], ['S / ↓', 'Walk backward'], ['A D / ← →', 'Turn left and right (the camera turns with you)'], ['Right-drag', 'Glance around (optional)']]
     : [['W A S D', 'Move'], ['Mouse', 'Look around (click the game first)']];
   return [...move, ['Shift', 'Sprint'], ['Left click', 'Attack (aims at the nearest hollow)'], ['Space', 'Dodge roll'], ['1 2 3 4', 'Skills'],
-    ['Q', 'Drink a Lantern Tonic'], ['E', 'Talk, open, pick up'], ['F', 'Pet your fox'], ['C  J  M', 'Character, journal, map'], ['H', 'Show these controls'], ['Esc', 'Menus and settings']];
+    ['Q', 'Drink a Lantern Tonic'], ['E', 'Talk, open, pick up'], ['F', 'Pet your fox'], ['C  J  M', 'Character, journal, map'], ['G', 'Game guide and rules'], ['H', 'Show these controls'], ['Esc', 'Menus and settings']];
 }
 const keysHTML = () => controlsList().map(([k, d]) => `<dt>${esc(k)}</dt><dd>${esc(d)}</dd>`).join('');
 
@@ -561,9 +573,11 @@ export function toggleControls(force) {
   const show = force ?? el.hidden;
   if (!show) { el.hidden = true; G.settings.seenControls = true; settingsHandlers.change?.('seenControls'); return; }
   el.innerHTML = `<div class="cc-inner"><h2>Controls</h2>${G.settings.controls !== 'mouse' ? '<p class="muted">No mouse needed to move: the camera turns when you turn.</p>' : ''}<dl class="keys">${keysHTML()}</dl>
-    <p class="muted small">You can switch between steering and mouse-look in Settings (Esc).</p><button class="btn primary" id="cc-ok">Got it</button></div>`;
+    <p class="muted small">New to Lanternmere? The guide explains the rules, fighting, your fox, friendships and more. Open it any time with G.</p>
+    <div class="btnrow"><button class="btn primary" id="cc-ok">Start playing</button><button class="btn" id="cc-guide">Read the guide</button></div></div>`;
   el.hidden = false;
   $('cc-ok').addEventListener('click', () => toggleControls(false));
+  $('cc-guide').addEventListener('click', () => { toggleControls(false); openGuide('rules'); });
 }
 export const controlsOpen = () => !$('controls-card').hidden;
 
@@ -689,6 +703,7 @@ export function updateHUD(dt) {
   E.xpT.textContent = `Level ${p.level}, ${p.xp} of ${need} XP`;
   E.gold.innerHTML = `<span class="coin"></span>${p.gold}`;
   E.clock.textContent = `Day ${G.day}, ${fmtTime(G.time)}${isNight() ? ', night' : ''}`;
+  if (isNight()) tip('night', 'Night has fallen. Hollows spot you from further away in the dark, and moonpetals glow so they are easy to find.');
   const f = G.save.fox;
   E.foxBox.hidden = !f.joined;
   if (f.joined) { E.foxName.textContent = f.name; E.foxLvl.textContent = `Bond ${f.bondLevel}`; E.foxBond.style.width = `${f.bondLevel >= 10 ? 100 : (f.bond / bondNeed(f.bondLevel)) * 100}%`; }
