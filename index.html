@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lanternmere</title>
+  <meta name="description" content="A 3D action RPG in your browser: a lakeside lantern festival, a spirit fox companion, and a town that remembers what you do.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..900,100;1,9..144,400..900,100&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="game/style.css">
+  <script type="importmap">{ "imports": { "three": "./game/vendor/three.module.min.js" } }</script>
+</head>
+<body>
+  <canvas id="game" tabindex="0" aria-label="Game view"></canvas>
+
+  <div id="loading"><div class="lantern-mark"></div><p>Lighting the lanterns</p></div>
+
+  <!-- title screen -->
+  <section id="title-screen" aria-label="Title screen">
+    <div class="title-block">
+      <h1>Lanternmere</h1>
+      <p class="tagline">Festival week. The lanterns keep going out, the lake keeps whispering, and everyone in town will remember what you did here.</p>
+      <div class="title-actions">
+        <button class="btn big primary" id="btn-continue" hidden>Continue <small></small></button>
+        <button class="btn big" id="btn-new">New journey</button>
+      </div>
+      <p class="title-keys">Best with a mouse and keyboard. Click the game to look around, WASD to move, left click to fight.</p>
+    </div>
+  </section>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="status" class="card">
+      <div class="who">
+        <div id="lvl-badge" title="Your level">1</div>
+        <div class="bars">
+          <div class="bar hp"><div id="hp-fill"></div><span id="hp-text"></span></div>
+          <div class="bar sp" title="Spirit, used by skills"><div id="sp-fill"></div></div>
+          <div class="bar st" title="Stamina, used by sprinting and dodging"><div id="st-fill"></div></div>
+        </div>
+      </div>
+      <div id="stat-pts" class="chip" hidden></div>
+      <div id="fox-status" hidden>
+        <span class="fox-dot"></span><span id="fox-name"></span><span id="fox-lvl" class="muted"></span>
+        <div class="bar bond"><div id="fox-bond-fill"></div></div>
+      </div>
+    </div>
+
+    <div id="nav">
+      <div class="mini-wrap"><canvas id="minimap" width="180" height="180" aria-label="Minimap"></canvas><div class="mini-n">N</div></div>
+      <div id="clock"></div>
+      <div id="gold"></div>
+    </div>
+
+    <div id="tracker" class="card">
+      <div id="tracker-title"></div>
+      <div id="tracker-step"></div>
+      <ul id="goals"></ul>
+    </div>
+
+    <div id="waypoint" hidden><i></i><span></span></div>
+    <div id="banner"></div>
+    <div id="zone-title"></div>
+    <div id="boss-bar"></div>
+    <div id="prompt"></div>
+    <div id="skills"></div>
+    <div id="xpbar"><div id="xp-fill"></div><span id="xp-text"></span></div>
+    <div id="toasts" aria-live="polite"></div>
+    <div id="lootfeed"></div>
+    <div id="fox-says"></div>
+    <div id="dmg-layer"></div>
+    <div id="hurt"></div>
+    <button id="lock-hint" hidden>Click to look around and fight</button>
+  </div>
+
+  <!-- dialogue -->
+  <section id="dialogue" aria-live="polite">
+    <div id="dlg-choices"></div>
+    <div class="dlg-box">
+      <img id="dlg-portrait" alt="">
+      <div class="dlg-plate"><span id="dlg-name"></span><span id="dlg-title"></span><span id="dlg-hearts"></span></div>
+      <div id="dlg-memory" hidden></div>
+      <p id="dlg-text"></p>
+      <div id="dlg-next" hidden>Continue <kbd>Space</kbd></div>
+    </div>
+  </section>
+
+  <!-- menus -->
+  <section id="panel" aria-label="Menu">
+    <div class="panel-card">
+      <header><nav id="panel-tabs"></nav><button id="panel-close" class="btn small" aria-label="Close menu">Close <kbd>Esc</kbd></button></header>
+      <div id="panel-body"></div>
+    </div>
+  </section>
+  <div id="tooltip" hidden></div>
+  <div id="modal"></div>
+  <div id="death"></div>
+  <div id="fade"></div>
+
+  <script type="module" src="game/main.js"></script>
+</body>
+</html>
